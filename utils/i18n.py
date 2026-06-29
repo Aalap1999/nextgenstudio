@@ -491,9 +491,30 @@ class I18n:
         "no": {"en": "No", "de": "Nein"},
         "na": {"en": "N/A", "de": "N/A"},
         "error_loading_modules": {"en": "Error loading modules", "de": "Fehler beim Laden der Module"},
-        "page_nav_label": {"en": "Navigation", "de": "Navigation"},
+        "page_nav_label": {"en": "Developer Navigation", "de": "Entwickler-Navigation"},
         "budget_compact_display": {"en": "Budget: {value} EUR", "de": "Budget: {value} EUR"},
         "transport_system_label": {"en": "Transport System", "de": "Transportsystem"},
+
+        # Validation errors
+        "err_output_ppm_positive": {"en": "Output rate must be greater than 0", "de": "Ausgaberate muss groesser als 0 sein"},
+        "err_annual_demand_positive": {"en": "Annual demand must be greater than 0", "de": "Jahresbedarf muss groesser als 0 sein"},
+        "err_oee_range": {"en": "OEE must be between 50% and 100%", "de": "OEE muss zwischen 50% und 100% liegen"},
+        "err_reject_range": {"en": "Reject rate must be between 0% and 100%", "de": "Ausschussrate muss zwischen 0% und 100% liegen"},
+        "err_tolerance_positive": {"en": "Tolerance must be greater than 0", "de": "Toleranz muss groesser als 0 sein"},
+        "err_variants_positive": {"en": "Variants must be at least 1", "de": "Varianten muessen mindestens 1 sein"},
+        "err_footprint_positive": {"en": "Footprint must be greater than 0", "de": "Fussabdruck muss groesser als 0 sein"},
+        "err_budget_positive": {"en": "Budget must be greater than 0", "de": "Budget muss groesser als 0 sein"},
+
+        # Form field help texts
+        "field_cycle_time_help": {"en": "Time for one complete cycle of the module in seconds", "de": "Zeit fuer einen kompletten Zyklus des Moduls in Sekunden"},
+        "field_capacity_help": {"en": "Maximum parts per minute the module can process", "de": "Maximale Teile pro Minute, die das Modul verarbeiten kann"},
+        "field_footprint_help": {"en": "Floor space required by one module unit in square meters", "de": "Benoetigte Bodenflaeche eines Modul-Einheit in Quadratmetern"},
+        "field_cost_help": {"en": "Cost of one module unit in EUR", "de": "Kosten einer Modul-Einheit in EUR"},
+        "field_energy_help": {"en": "Energy consumption of one module unit in kW", "de": "Energieverbrauch einer Modul-Einheit in kW"},
+        "field_flexibility_help": {"en": "How easily the module adapts to different products (1 = rigid, 10 = very flexible)", "de": "Wie leicht das Modul sich an verschiedene Produkte anpasst (1 = starr, 10 = sehr flexibel)"},
+        "field_tolerance_help": {"en": "Smallest achievable tolerance in micrometers. Use 9999 for no constraint.", "de": "Kleinste erreichbare Toleranz in Mikrometern. 9999 fuer keine Beschraenkung."},
+        "field_variant_flex_help": {"en": "How many product variants the module can handle (1 = single variant, 10 = high variety)", "de": "Wie viele Produktvarianten das Modul handhaben kann (1 = Einzelvariante, 10 = hohe Vielfalt)"},
+        "field_cleanroom_help": {"en": "Whether the module is compatible with cleanroom environments (ISO 14644-1)", "de": "Ob das Modul mit Reinraum-Umgebungen kompatibel ist (ISO 14644-1)"},
     }
 
     def __init__(self, lang: str = "en"):

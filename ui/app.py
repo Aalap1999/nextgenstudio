@@ -501,13 +501,21 @@ st.markdown("""
         margin: 0;
     }
 
-    .budget-compact {
+    .compact-display {
         font-size: 0.75rem;
         color: #6b7280;
         font-weight: 600;
         margin-top: -6px;
         margin-bottom: 8px;
         text-align: right;
+    }
+
+    .validation-msg {
+        font-size: 0.75rem;
+        color: #dc2626;
+        font-weight: 600;
+        margin-top: -6px;
+        margin-bottom: 8px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -538,41 +546,71 @@ def render_header():
 
 
 # ===================================================================
+# VALIDATION
+# ===================================================================
+
+def _validate_sidebar_inputs(req_values):
+    """Validate all sidebar inputs and return a list of (field, error_msg) tuples."""
+    errors = []
+    if req_values["output_ppm"] <= 0:
+        errors.append(("output_ppm", t("err_output_ppm_positive")))
+    if req_values["annual_demand"] <= 0:
+        errors.append(("annual_demand", t("err_annual_demand_positive")))
+    if req_values["oee_target"] <= 0 or req_values["oee_target"] > 1:
+        errors.append(("oee_slider", t("err_oee_range")))
+    if req_values["reject_rate"] < 0 or req_values["reject_rate"] >= 1:
+        errors.append(("reject_slider", t("err_reject_range")))
+    if req_values["tolerance_um"] <= 0:
+        errors.append(("tolerance_um", t("err_tolerance_positive")))
+    if req_values["variants"] < 1:
+        errors.append(("variants", t("err_variants_positive")))
+    if req_values["footprint_max_m2"] <= 0:
+        errors.append(("footprint_max", t("err_footprint_positive")))
+    if req_values["budget_max_eur"] <= 0:
+        errors.append(("budget_max", t("err_budget_positive")))
+    return errors
+
+
+# ===================================================================
 # SIDEBAR
 # ===================================================================
 
 def render_sidebar():
-    # --- Page Switcher ---
+    page = st.session_state.get("page", "Configurator")
+
+    if page == "Configurator":
+        selected_product, requirements, generate = _render_configurator_sidebar()
+    else:
+        selected_product, requirements, generate = None, None, None
+
+    # --- Developer Navigation (bottom) ---
+    st.sidebar.markdown("<div style='margin-top:32px;'></div>", unsafe_allow_html=True)
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(
+        f"<p style='font-size:0.65rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;'>{t('page_nav_label')}</p>",
+        unsafe_allow_html=True
+    )
+
     page_options = ["Configurator", "Component Library"]
     page_labels = {
         "Configurator": t("page_configurator"),
         "Component Library": t("page_library")
     }
 
-    st.sidebar.markdown(
-        f"<p style='font-size:0.7rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;'>{t('page_nav_label')}</p>",
-        unsafe_allow_html=True
-    )
-
     selected_page = st.sidebar.radio(
         "",
         options=page_options,
         format_func=lambda x: page_labels[x],
-        index=page_options.index(st.session_state.get("page", "Configurator")),
+        index=page_options.index(page),
         horizontal=True,
         label_visibility="collapsed",
         key="page_selector"
     )
 
-    if selected_page != st.session_state.get("page", "Configurator"):
+    if selected_page != page:
         st.session_state.page = selected_page
 
-    st.sidebar.markdown("---")
-
-    if selected_page == "Configurator":
-        return _render_configurator_sidebar()
-    else:
-        return None, None, None
+    return selected_product, requirements, generate
 
 
 def _render_configurator_sidebar():
@@ -590,7 +628,6 @@ def _render_configurator_sidebar():
         unsafe_allow_html=True
     )
 
-    # Ensure product_idx is valid
     if st.session_state.product_idx >= len(product_name_list):
         st.session_state.product_idx = 0
 
@@ -606,7 +643,6 @@ def _render_configurator_sidebar():
 
     selected_product = product_names[product_choice]
 
-    # Product change detection: reset cleanroom to product default
     if st.session_state._last_product_name != product_choice:
         st.session_state.cleanroom_check = selected_product["default_cleanroom_requirement"]
         st.session_state._last_product_name = product_choice
@@ -622,13 +658,24 @@ def _render_configurator_sidebar():
         unsafe_allow_html=True
     )
 
+    # Output Rate - NO step to avoid browser validation, custom validation instead
     output_ppm = st.sidebar.number_input(
-        t('output_rate_label'), min_value=1.0, value=60.0, step=5.0,
+        t('output_rate_label'), min_value=0.1, value=60.0,
         help=t('output_rate_help'), key="output_ppm"
     )
+    st.sidebar.markdown(
+        f'<p class="compact-display">{fmt_compact(output_ppm)} {t("kpi_unit_ppm")}</p>',
+        unsafe_allow_html=True
+    )
+
+    # Annual Demand - NO step to avoid browser validation
     annual_demand = st.sidebar.number_input(
-        t('annual_demand_label'), min_value=1, value=500000, step=50000,
+        t('annual_demand_label'), min_value=1, value=500000,
         help=t('annual_demand_help'), key="annual_demand"
+    )
+    st.sidebar.markdown(
+        f'<p class="compact-display">{fmt_compact(annual_demand)} {t("kpi_unit_pcs")}</p>',
+        unsafe_allow_html=True
     )
 
     # OEE Slider (50-100) with normalized progress bar
@@ -689,8 +736,12 @@ def _render_configurator_sidebar():
         help=t('packaging_help'), key="packaging_check"
     )
     tolerance_um = st.sidebar.number_input(
-        t('tolerance_label'), min_value=1.0, value=100.0, step=10.0,
+        t('tolerance_label'), min_value=0.1, value=100.0,
         help=t('tolerance_help'), key="tolerance_um"
+    )
+    st.sidebar.markdown(
+        f'<p class="compact-display">{tolerance_um:.1f} um</p>',
+        unsafe_allow_html=True
     )
     st.sidebar.markdown("---")
 
@@ -700,21 +751,42 @@ def _render_configurator_sidebar():
         unsafe_allow_html=True
     )
     variants = st.sidebar.number_input(
-        t('variants_label'), min_value=1, value=1, step=1,
+        t('variants_label'), min_value=1, value=1,
         help=t('variants_help'), key="variants"
     )
     footprint_max = st.sidebar.number_input(
-        t('footprint_label'), min_value=1.0, value=50.0, step=5.0,
+        t('footprint_label'), min_value=0.1, value=50.0,
         help=t('footprint_help'), key="footprint_max"
     )
+    st.sidebar.markdown(
+        f'<p class="compact-display">{footprint_max:.1f} m2</p>',
+        unsafe_allow_html=True
+    )
     budget_max = st.sidebar.number_input(
-        t('budget_label'), min_value=10000, value=500000, step=50000,
+        t('budget_label'), min_value=1000, value=500000,
         help=t('budget_help'), key="budget_max"
     )
     st.sidebar.markdown(
-        f'<p class="budget-compact">{fmt_compact(budget_max)} EUR</p>',
+        f'<p class="compact-display">{fmt_compact(budget_max)} EUR</p>',
         unsafe_allow_html=True
     )
+
+    # Custom validation - only show errors for truly invalid values
+    errors = []
+    if output_ppm <= 0:
+        errors.append(("output_ppm", t("err_output_ppm_positive")))
+    if annual_demand <= 0:
+        errors.append(("annual_demand", t("err_annual_demand_positive")))
+    if tolerance_um <= 0:
+        errors.append(("tolerance_um", t("err_tolerance_positive")))
+    if footprint_max <= 0:
+        errors.append(("footprint_max", t("err_footprint_positive")))
+    if budget_max <= 0:
+        errors.append(("budget_max", t("err_budget_positive")))
+
+    for field, msg in errors:
+        st.sidebar.markdown(f'<p class="validation-msg">{msg}</p>', unsafe_allow_html=True)
+
     st.sidebar.markdown("---")
 
     # Optimization Section
@@ -753,7 +825,7 @@ def _render_configurator_sidebar():
     generate = st.sidebar.button(
         t('generate_button'), type="primary",
         use_container_width=True, help=t('generate_help'),
-        key="generate_btn"
+        key="generate_btn", disabled=bool(errors)
     )
 
     return selected_product, requirements, generate
@@ -874,7 +946,6 @@ def render_kpi_dashboard(kpis, feasibility):
 def render_architecture(line_arch, cost):
     st.markdown(f"<div class='section-title'>{t('arch_section_title')}</div>", unsafe_allow_html=True)
 
-    # Use localized architecture name if available
     arch_name = get_architecture_display_name(line_arch.get("type", ""), st.session_state.lang)
     if not arch_name:
         arch_name = line_arch.get('name', '')
@@ -921,7 +992,6 @@ def render_process_chain(process_chain):
             units = ""
             css_class = "pipe-step error"
 
-        # Use localized operation name from Knowledge Model
         op_info = KNOWLEDGE_MODEL.get_operation_info(step["operation_type"], st.session_state.lang)
         op_name = op_info.get("name", step["operation_type"].replace("_", " ").upper()).upper()
 
@@ -1136,16 +1206,16 @@ def render_library_page():
             new_id = st.text_input(t('field_id'), help=t('field_id_help'))
             new_name = st.text_input(t('field_name'))
             new_category = st.text_input(t('field_category'), help=t('field_category_help'))
-            new_cycle = st.number_input(t('field_cycle_time'), min_value=0.0, value=1.0, step=0.1)
-            new_capacity = st.number_input(t('field_capacity'), min_value=1.0, value=60.0, step=5.0)
-            new_footprint = st.number_input(t('field_footprint'), min_value=0.1, value=1.0, step=0.1)
+            new_cycle = st.number_input(t('field_cycle_time'), min_value=0.0, value=1.0, help=t('field_cycle_time_help'))
+            new_capacity = st.number_input(t('field_capacity'), min_value=1.0, value=60.0, help=t('field_capacity_help'))
+            new_footprint = st.number_input(t('field_footprint'), min_value=0.1, value=1.0, help=t('field_footprint_help'))
         with c2:
-            new_cost = st.number_input(t('field_cost'), min_value=1000, value=25000, step=1000)
-            new_energy = st.number_input(t('field_energy'), min_value=0.1, value=1.0, step=0.1)
-            new_flex = st.slider(t('field_flexibility'), 1, 10, 5)
-            new_tolerance = st.number_input(t('field_tolerance'), min_value=1, value=100, step=10)
-            new_var_flex = st.slider(t('field_variant_flex'), 1, 10, 5)
-            new_cleanroom = st.checkbox(t('field_cleanroom'), value=True)
+            new_cost = st.number_input(t('field_cost'), min_value=1000, value=25000, help=t('field_cost_help'))
+            new_energy = st.number_input(t('field_energy'), min_value=0.1, value=1.0, help=t('field_energy_help'))
+            new_flex = st.slider(t('field_flexibility'), 1, 10, 5, help=t('field_flexibility_help'))
+            new_tolerance = st.number_input(t('field_tolerance'), min_value=1, value=100, help=t('field_tolerance_help'))
+            new_var_flex = st.slider(t('field_variant_flex'), 1, 10, 5, help=t('field_variant_flex_help'))
+            new_cleanroom = st.checkbox(t('field_cleanroom'), value=True, help=t('field_cleanroom_help'))
 
         new_industries = st.text_input(t('field_industries'), help=t('field_industries_help'))
         new_tags = st.text_input(t('field_tags'), help=t('field_tags_help'))
