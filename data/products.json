@@ -1,0 +1,51 @@
+{
+  "products": [
+    {
+      "id": "prod_lancet",
+      "name": "Disposable Safety Lancet",
+      "category": "medical",
+      "default_cleanroom_requirement": true,
+      "typical_parts_list": ["lancet_body", "spring", "needle", "cap", "trigger_mechanism"],
+      "base_operations": [
+        { "step": 1, "operation_type": "feeding", "required": true, "notes": "Feed lancet bodies and springs" },
+        { "step": 2, "operation_type": "assembly", "required": true, "notes": "Assemble spring into body" },
+        { "step": 3, "operation_type": "insertion", "required": true, "notes": "Insert needle and cap" },
+        { "step": 4, "operation_type": "testing", "required": true, "notes": "Force-displacement test for spring mechanism" },
+        { "step": 5, "operation_type": "inspection", "required": true, "notes": "100% vision inspection for medical compliance" },
+        { "step": 6, "operation_type": "marking", "required": false, "notes": "Individual traceability marking if required" },
+        { "step": 7, "operation_type": "packaging", "required": true, "notes": "Sterile packaging" }
+      ]
+    },
+    {
+      "id": "prod_razor",
+      "name": "Razor Cartridge",
+      "category": "consumer_goods",
+      "default_cleanroom_requirement": false,
+      "typical_parts_list": ["cartridge_body", "blade", "lubrication_strip", "guard", "spring"],
+      "base_operations": [
+        { "step": 1, "operation_type": "feeding", "required": true, "notes": "Feed blades and cartridge bodies" },
+        { "step": 2, "operation_type": "assembly", "required": true, "notes": "Mount blade into body" },
+        { "step": 3, "operation_type": "insertion", "required": true, "notes": "Insert lubrication strip and guard" },
+        { "step": 4, "operation_type": "testing", "required": false, "notes": "Optional blade sharpness test" },
+        { "step": 5, "operation_type": "inspection", "required": false, "notes": "Optional vision inspection" },
+        { "step": 6, "operation_type": "packaging", "required": true, "notes": "Blister or cartoning" }
+      ]
+    },
+    {
+      "id": "prod_connector",
+      "name": "Industrial Connector",
+      "category": "industrial_components",
+      "default_cleanroom_requirement": false,
+      "typical_parts_list": ["housing", "contact_pins", "seal", "lock_mechanism", "shell"],
+      "base_operations": [
+        { "step": 1, "operation_type": "feeding", "required": true, "notes": "Feed housings and contacts" },
+        { "step": 2, "operation_type": "assembly", "required": true, "notes": "Insert contacts into housing" },
+        { "step": 3, "operation_type": "insertion", "required": true, "notes": "Insert seal and lock mechanism" },
+        { "step": 4, "operation_type": "testing", "required": true, "notes": "Electrical continuity and isolation test" },
+        { "step": 5, "operation_type": "inspection", "required": false, "notes": "Optional dimension check" },
+        { "step": 6, "operation_type": "marking", "required": false, "notes": "Batch marking if required" },
+        { "step": 7, "operation_type": "packaging", "required": true, "notes": "Bagging or tray packaging" }
+      ]
+    }
+  ]
+}

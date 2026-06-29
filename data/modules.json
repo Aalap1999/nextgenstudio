@@ -1,0 +1,627 @@
+{
+  "modules": [
+    {
+      "id": "mod_bowl_feeder",
+      "name": "Bowl Feeder",
+      "category": "feeding_systems",
+      "cycle_time_s": 0.5,
+      "capacity_ppm": 120,
+      "footprint_m2": 0.8,
+      "cost_eur": 15000,
+      "energy_kw": 0.4,
+      "flexibility_score": 3,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "feeding",
+        "orienting",
+        "bulk_supply"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 100,
+      "variant_flexibility": 2
+    },
+    {
+      "id": "mod_tray_feeder",
+      "name": "Tray Feeder",
+      "category": "feeding_systems",
+      "cycle_time_s": 0.8,
+      "capacity_ppm": 75,
+      "footprint_m2": 1.2,
+      "cost_eur": 22000,
+      "energy_kw": 0.6,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "feeding",
+        "precision_orienting",
+        "tray_supply"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 50,
+      "variant_flexibility": 4
+    },
+    {
+      "id": "mod_flexible_feeder",
+      "name": "Flexible Feeder",
+      "category": "feeding_systems",
+      "cycle_time_s": 1.0,
+      "capacity_ppm": 60,
+      "footprint_m2": 1.5,
+      "cost_eur": 35000,
+      "energy_kw": 0.8,
+      "flexibility_score": 9,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "feeding",
+        "vision_orienting",
+        "multi_variant"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 75,
+      "variant_flexibility": 9
+    },
+    {
+      "id": "mod_scara",
+      "name": "SCARA Robot Cell",
+      "category": "robot_cells",
+      "cycle_time_s": 0.6,
+      "capacity_ppm": 100,
+      "footprint_m2": 2.0,
+      "cost_eur": 45000,
+      "energy_kw": 1.2,
+      "flexibility_score": 7,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "pick_place",
+        "assembly",
+        "fast_cycle"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 50,
+      "variant_flexibility": 7
+    },
+    {
+      "id": "mod_6axis",
+      "name": "6-Axis Robot Cell",
+      "category": "robot_cells",
+      "cycle_time_s": 1.2,
+      "capacity_ppm": 50,
+      "footprint_m2": 3.5,
+      "cost_eur": 85000,
+      "energy_kw": 2.5,
+      "flexibility_score": 10,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "pick_place",
+        "assembly",
+        "complex_motion",
+        "welding"
+      ],
+      "cleanroom_compatible": false,
+      "tolerance_um": 200,
+      "variant_flexibility": 10
+    },
+    {
+      "id": "mod_linear_transport",
+      "name": "Linear Transport System",
+      "category": "transport_systems",
+      "cycle_time_s": 0.4,
+      "capacity_ppm": 150,
+      "footprint_m2": 4.0,
+      "cost_eur": 60000,
+      "energy_kw": 1.5,
+      "flexibility_score": 6,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "transport",
+        "high_throughput",
+        "modular"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 100,
+      "variant_flexibility": 5
+    },
+    {
+      "id": "mod_pallet_conveyor",
+      "name": "Pallet Conveyor",
+      "category": "transport_systems",
+      "cycle_time_s": 0.8,
+      "capacity_ppm": 75,
+      "footprint_m2": 2.5,
+      "cost_eur": 35000,
+      "energy_kw": 1.0,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "transport",
+        "medium_throughput",
+        "pallet_based"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 100,
+      "variant_flexibility": 6
+    },
+    {
+      "id": "mod_rotary_table",
+      "name": "Rotary Indexing Table",
+      "category": "transport_systems",
+      "cycle_time_s": 1.0,
+      "capacity_ppm": 60,
+      "footprint_m2": 1.8,
+      "cost_eur": 40000,
+      "energy_kw": 1.0,
+      "flexibility_score": 4,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "transport",
+        "compact",
+        "synchronous"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 75,
+      "variant_flexibility": 3
+    },
+    {
+      "id": "mod_servo_press",
+      "name": "Servo Press",
+      "category": "press_systems",
+      "cycle_time_s": 0.8,
+      "capacity_ppm": 75,
+      "footprint_m2": 1.0,
+      "cost_eur": 30000,
+      "energy_kw": 2.0,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "pressing",
+        "insertion",
+        "force_control"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 50,
+      "variant_flexibility": 5
+    },
+    {
+      "id": "mod_welding",
+      "name": "Welding Module",
+      "category": "joining_systems",
+      "cycle_time_s": 2.0,
+      "capacity_ppm": 30,
+      "footprint_m2": 1.5,
+      "cost_eur": 50000,
+      "energy_kw": 5.0,
+      "flexibility_score": 4,
+      "supported_industries": [
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "welding",
+        "ultrasonic",
+        "laser"
+      ],
+      "cleanroom_compatible": false,
+      "tolerance_um": 200,
+      "variant_flexibility": 3
+    },
+    {
+      "id": "mod_dosing",
+      "name": "Dosing Module",
+      "category": "dosing_systems",
+      "cycle_time_s": 1.5,
+      "capacity_ppm": 40,
+      "footprint_m2": 1.2,
+      "cost_eur": 28000,
+      "energy_kw": 1.0,
+      "flexibility_score": 6,
+      "supported_industries": [
+        "medical",
+        "consumer_goods"
+      ],
+      "capability_tags": [
+        "dosing",
+        "adhesive",
+        "liquid"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 100,
+      "variant_flexibility": 5
+    },
+    {
+      "id": "mod_vision_2d",
+      "name": "Vision Inspection 2D",
+      "category": "inspection_systems",
+      "cycle_time_s": 0.5,
+      "capacity_ppm": 120,
+      "footprint_m2": 0.6,
+      "cost_eur": 18000,
+      "energy_kw": 0.3,
+      "flexibility_score": 6,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "inspection",
+        "vision",
+        "2d",
+        "surface_check"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 50,
+      "variant_flexibility": 6
+    },
+    {
+      "id": "mod_vision_3d",
+      "name": "Vision Inspection 3D",
+      "category": "inspection_systems",
+      "cycle_time_s": 1.0,
+      "capacity_ppm": 60,
+      "footprint_m2": 1.0,
+      "cost_eur": 35000,
+      "energy_kw": 0.5,
+      "flexibility_score": 7,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "inspection",
+        "vision",
+        "3d",
+        "dimension_check"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 25,
+      "variant_flexibility": 7
+    },
+    {
+      "id": "mod_force_test",
+      "name": "Force-Displacement Test",
+      "category": "testing_systems",
+      "cycle_time_s": 1.5,
+      "capacity_ppm": 40,
+      "footprint_m2": 0.8,
+      "cost_eur": 25000,
+      "energy_kw": 0.5,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "testing",
+        "force",
+        "spring",
+        "mechanical"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 50,
+      "variant_flexibility": 4
+    },
+    {
+      "id": "mod_leak_test",
+      "name": "Leak Test Module",
+      "category": "testing_systems",
+      "cycle_time_s": 2.0,
+      "capacity_ppm": 30,
+      "footprint_m2": 1.0,
+      "cost_eur": 32000,
+      "energy_kw": 0.8,
+      "flexibility_score": 4,
+      "supported_industries": [
+        "medical",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "testing",
+        "leak",
+        "pressure",
+        "seal"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 100,
+      "variant_flexibility": 3
+    },
+    {
+      "id": "mod_electrical_test",
+      "name": "Electrical Test Module",
+      "category": "testing_systems",
+      "cycle_time_s": 1.0,
+      "capacity_ppm": 60,
+      "footprint_m2": 0.7,
+      "cost_eur": 20000,
+      "energy_kw": 0.6,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "testing",
+        "electrical",
+        "continuity",
+        "isolation"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 100,
+      "variant_flexibility": 4
+    },
+    {
+      "id": "mod_laser_marking",
+      "name": "Laser Marking",
+      "category": "marking_systems",
+      "cycle_time_s": 0.8,
+      "capacity_ppm": 75,
+      "footprint_m2": 0.9,
+      "cost_eur": 28000,
+      "energy_kw": 1.5,
+      "flexibility_score": 6,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "marking",
+        "laser",
+        "traceability",
+        "code"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 10,
+      "variant_flexibility": 6
+    },
+    {
+      "id": "mod_packaging",
+      "name": "Packaging Module",
+      "category": "packaging_systems",
+      "cycle_time_s": 1.2,
+      "capacity_ppm": 50,
+      "footprint_m2": 2.0,
+      "cost_eur": 30000,
+      "energy_kw": 1.0,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "packaging",
+        "bagging",
+        "blister",
+        "cartoning"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 9999,
+      "variant_flexibility": 5
+    },
+    {
+      "id": "mod_reject",
+      "name": "Reject Handling",
+      "category": "quality_handling",
+      "cycle_time_s": 0.5,
+      "capacity_ppm": 120,
+      "footprint_m2": 0.5,
+      "cost_eur": 8000,
+      "energy_kw": 0.2,
+      "flexibility_score": 4,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "reject",
+        "sorting",
+        "ng_handling"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 9999,
+      "variant_flexibility": 3
+    },
+    {
+      "id": "mod_plc",
+      "name": "PLC Control Cabinet",
+      "category": "control_systems",
+      "cycle_time_s": 0.0,
+      "capacity_ppm": 9999,
+      "footprint_m2": 0.8,
+      "cost_eur": 12000,
+      "energy_kw": 0.5,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "control",
+        "plc",
+        "safety",
+        "logic"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 9999,
+      "variant_flexibility": 5
+    },
+    {
+      "id": "mod_hmi",
+      "name": "HMI Station",
+      "category": "control_systems",
+      "cycle_time_s": 0.0,
+      "capacity_ppm": 9999,
+      "footprint_m2": 0.3,
+      "cost_eur": 5000,
+      "energy_kw": 0.2,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "hmi",
+        "operator",
+        "visualization"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 9999,
+      "variant_flexibility": 5
+    },
+    {
+      "id": "mod_data_logger",
+      "name": "Data Logging Interface",
+      "category": "control_systems",
+      "cycle_time_s": 0.0,
+      "capacity_ppm": 9999,
+      "footprint_m2": 0.2,
+      "cost_eur": 7000,
+      "energy_kw": 0.1,
+      "flexibility_score": 6,
+      "supported_industries": [
+        "medical",
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "data",
+        "database",
+        "mes"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 9999,
+      "variant_flexibility": 6
+    },
+    {
+      "id": "mod_vibration_feeder",
+      "name": "Vibration Feeder",
+      "category": "feeding_systems",
+      "cycle_time_s": 0.6,
+      "capacity_ppm": 100,
+      "footprint_m2": 0.9,
+      "cost_eur": 12000,
+      "energy_kw": 0.35,
+      "flexibility_score": 2,
+      "supported_industries": [
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "feeding",
+        "linear",
+        "simple_orienting"
+      ],
+      "cleanroom_compatible": false,
+      "tolerance_um": 9999,
+      "variant_flexibility": 1
+    },
+    {
+      "id": "mod_stacking",
+      "name": "Stacking Module",
+      "category": "packaging_systems",
+      "cycle_time_s": 1.0,
+      "capacity_ppm": 60,
+      "footprint_m2": 1.5,
+      "cost_eur": 22000,
+      "energy_kw": 0.7,
+      "flexibility_score": 4,
+      "supported_industries": [
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "packaging",
+        "stacking",
+        "palletizing"
+      ],
+      "cleanroom_compatible": false,
+      "tolerance_um": 9999,
+      "variant_flexibility": 3
+    },
+    {
+      "id": "mod_clip_assembly",
+      "name": "Clip Assembly Module",
+      "category": "assembly_systems",
+      "cycle_time_s": 0.7,
+      "capacity_ppm": 85,
+      "footprint_m2": 1.1,
+      "cost_eur": 25000,
+      "energy_kw": 0.8,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "consumer_goods",
+        "industrial_components"
+      ],
+      "capability_tags": [
+        "assembly",
+        "clip",
+        "snap_fit"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 100,
+      "variant_flexibility": 5
+    },
+    {
+      "id": "mod_test_custom",
+      "name": "Test Custom Module",
+      "category": "testing_systems",
+      "cycle_time_s": 1.0,
+      "capacity_ppm": 60,
+      "footprint_m2": 1.0,
+      "cost_eur": 25000,
+      "energy_kw": 1.0,
+      "flexibility_score": 5,
+      "supported_industries": [
+        "medical",
+        "consumer_goods"
+      ],
+      "capability_tags": [
+        "testing",
+        "custom"
+      ],
+      "cleanroom_compatible": true,
+      "tolerance_um": 50,
+      "variant_flexibility": 5
+    }
+  ]
+}

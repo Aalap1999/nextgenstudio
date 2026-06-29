@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ModuleSchema",
+  "type": "object",
+  "required": ["modules"],
+  "properties": {
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "cycle_time_s",
+          "capacity_ppm",
+          "footprint_m2",
+          "cost_eur",
+          "energy_kw",
+          "flexibility_score",
+          "supported_industries",
+          "capability_tags",
+          "cleanroom_compatible",
+          "tolerance_um",
+          "variant_flexibility"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "category": { "type": "string" },
+          "cycle_time_s": { "type": "number", "minimum": 0 },
+          "capacity_ppm": { "type": "number", "minimum": 0 },
+          "footprint_m2": { "type": "number", "minimum": 0 },
+          "cost_eur": { "type": "number", "minimum": 0 },
+          "energy_kw": { "type": "number", "minimum": 0 },
+          "flexibility_score": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "supported_industries": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "capability_tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "cleanroom_compatible": { "type": "boolean" },
+          "tolerance_um": { "type": "number", "minimum": 0 },
+          "variant_flexibility": { "type": "integer", "minimum": 1, "maximum": 10 }
+        }
+      }
+    }
+  }
+}
