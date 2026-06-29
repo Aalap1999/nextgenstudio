@@ -500,19 +500,61 @@ class KnowledgeModel:
             ],
         },
         "bottleneck_detected": {
-            "condition": "any module cycle_time > takt_time * 1.2",
+            "condition": "any module effective_cycle_time > takt_time * 1.2",
             "severity": "warning",
             "recommendations_en": [
-                "A bottleneck station has been detected. The module cycle time exceeds the takt time buffer.",
+                "A bottleneck station has been detected. The effective module cycle time (raw cycle / parallel units) exceeds the takt time buffer.",
                 "Add parallel stations for the bottleneck operation to balance the line.",
                 "Consider upgrading to a higher-capacity module for the bottleneck step.",
                 "Evaluate whether the operation can be split into pre- and post-processing steps.",
             ],
             "recommendations_de": [
-                "Eine Engpassstation wurde erkannt. Die Modulzykluszeit ueberschreitet den Taktzeit-Puffer.",
+                "Eine Engpassstation wurde erkannt. Die effektive Modulzykluszeit (Rohzyklus / parallele Einheiten) ueberschreitet den Taktzeit-Puffer.",
                 "Fuegen Sie parallele Stationen fuer die Engpassoperation hinzu, um die Linie zu balancieren.",
                 "Erwaeigen Sie ein Upgrade auf ein hoeherkapazitaetsmodul fuer den Engpassschritt.",
                 "Bewerten Sie, ob die Operation in Vor- und Nachbearbeitungsschritte aufgeteilt werden kann.",
+            ],
+        },
+        "energy_high": {
+            "condition": "total_energy / nominal_rate > 0.5 kW/ppm",
+            "severity": "warning",
+            "recommendations_en": [
+                "Energy consumption is high relative to throughput. Consider selecting lower-energy modules.",
+                "Evaluate whether all parallel stations need to run simultaneously or can be staged.",
+                "Switch optimization priority to 'energy' to prefer energy-efficient modules.",
+            ],
+            "recommendations_de": [
+                "Der Energieverbrauch ist im Verhaeltnis zum Durchsatz hoch. Erwaeigen Sie energiesparendere Module.",
+                "Pruefen Sie, ob alle parallelen Stationen gleichzeitig laufen muessen oder gestaffelt werden koennen.",
+                "Wechseln Sie die Optimierungsprioritaet zu 'Energie', um energieeffiziente Module zu bevorzugen.",
+            ],
+        },
+        "too_many_parallel": {
+            "condition": "parallel_units > 4",
+            "severity": "warning",
+            "recommendations_en": [
+                "High number of parallel units increases footprint and cost. Consider a higher-capacity module.",
+                "Evaluate whether the output rate target can be reduced or OEE improved to reduce parallel count.",
+                "A rotary indexing table may be more compact than multiple parallel stations on a linear system.",
+            ],
+            "recommendations_de": [
+                "Eine hohe Anzahl paralleler Einheiten erhoeht Fussabdruck und Kosten. Erwaeigen Sie ein hoeherkapazitaetsmodul.",
+                "Pruefen Sie, ob das Ausgaberate-Ziel reduziert oder OEE verbessert werden kann, um die Parallelanzahl zu senken.",
+                "Ein Rundtakt-Tisch koennte kompakter sein als mehrere parallele Stationen auf einem Linear-System.",
+            ],
+        },
+        "high_reject_rate": {
+            "condition": "reject_rate > 5%",
+            "severity": "warning",
+            "recommendations_en": [
+                "High reject rate inflates nominal rate and cost. Focus on upstream process improvement.",
+                "Consider adding in-process inspection stations to catch defects early.",
+                "Evaluate whether the assembly tolerance or process parameters can be tightened.",
+            ],
+            "recommendations_de": [
+                "Eine hohe Ausschussrate erhoeht die Nennrate und Kosten. Konzentrieren Sie sich auf Verbesserung des Upstream-Prozesses.",
+                "Erwaeigen Sie Inline-Inspektionsstationen, um Fehler frueh zu erkennen.",
+                "Pruefen Sie, ob die Montagetoleranz oder Prozessparameter verschaerft werden koennen.",
             ],
         },
     }
@@ -704,6 +746,7 @@ class KnowledgeModel:
         cost = report.get("cost_summary", {})
         feasibility = report.get("feasibility", {})
         process_chain = report.get("process_chain", [])
+        input_req = report.get("input", {})
         
         util = kpis.get("capacity_utilization", 0)
         takt = kpis.get("takt_time_s", 999)
@@ -766,32 +809,85 @@ class KnowledgeModel:
                 "actions": self.get_recommendations("footprint_overrun", lang),
             })
         
-        # Check missing modules
+        # Check missing modules with SPECIFIC reason analysis
         no_modules = [s for s in process_chain if s.get("status") == "NO_MODULE_FOUND"]
         if no_modules:
-            recommendations.append({
+            op_types = [s['operation_type'] for s in no_modules]
+            rec = {
                 "type": "no_module_found",
                 "severity": "error",
                 "title_en": "Missing Module",
                 "title_de": "Fehlendes Modul",
-                "message_en": f"No compatible module found for {len(no_modules)} operation(s): {', '.join(s['operation_type'] for s in no_modules)}.",
-                "message_de": f"Kein kompatibles Modul gefunden fuer {len(no_modules)} Operation(en): {', '.join(s['operation_type'] for s in no_modules)}.",
+                "message_en": f"No compatible module found for {len(no_modules)} operation(s): {', '.join(op_types)}.",
+                "message_de": f"Kein kompatibles Modul gefunden fuer {len(no_modules)} Operation(en): {', '.join(op_types)}.",
                 "actions": self.get_recommendations("no_module_found", lang),
-            })
+            }
+            # Add specific guidance based on input requirements
+            if input_req.get("tolerance_um", 0) < 50:
+                rec["actions"] = rec["actions"] + (["The tolerance requirement may be too strict. Consider relaxing it."] if lang == "en" else ["Die Toleranzanforderung koennte zu streng sein. Erwaeigen Sie eine Lockerung."])
+            if input_req.get("cleanroom_required"):
+                rec["actions"] = rec["actions"] + (["Cleanroom requirement is active. Verify if your product category actually needs it."] if lang == "en" else ["Reinraum-Anforderung ist aktiv. Pruefen Sie, ob Ihre Produktkategorie dies tatsaechlich benoetigt."])
+            recommendations.append(rec)
         
-        # Check bottleneck
+        # Check bottleneck using EFFECTIVE cycle time (accounting for parallel units)
+        # BUG FIX: was comparing raw cycle_time_s to takt, should be cycle_time_s / parallel_units
         for step in process_chain:
             mod = step.get("module")
-            if mod and mod.get("cycle_time_s", 0) > takt * 1.2:
+            if mod:
+                raw_cycle = mod.get("cycle_time_s", 0)
+                parallel = max(mod.get("parallel_units", 1), 1)
+                effective_cycle = raw_cycle / parallel
+                if effective_cycle > takt * 1.2:
+                    recommendations.append({
+                        "type": "bottleneck_detected",
+                        "severity": "warning",
+                        "title_en": "Bottleneck Detected",
+                        "title_de": "Engpass erkannt",
+                        "message_en": f"Module '{mod['name']}' effective cycle time ({effective_cycle:.3f}s = {raw_cycle}s / {parallel} units) exceeds takt buffer ({takt*1.2:.3f}s).",
+                        "message_de": f"Modul '{mod['name']}' effektive Zykluszeit ({effective_cycle:.3f}s = {raw_cycle}s / {parallel} Einheiten) ueberschreitet Takt-Puffer ({takt*1.2:.3f}s).",
+                        "actions": self.get_recommendations("bottleneck_detected", lang),
+                    })
+        
+        # Check energy efficiency
+        total_energy = cost.get("total_energy_kw", 0)
+        nominal_rate = kpis.get("nominal_rate_ppm", 1)
+        if total_energy > 0 and (total_energy / nominal_rate) > 0.5:
+            recommendations.append({
+                "type": "energy_high",
+                "severity": "warning",
+                "title_en": "High Energy Consumption",
+                "title_de": "Hoher Energieverbrauch",
+                "message_en": f"Energy consumption is {total_energy:.2f} kW for {nominal_rate:.0f} ppm. Consider energy-efficient modules.",
+                "message_de": f"Energieverbrauch betraegt {total_energy:.2f} kW bei {nominal_rate:.0f} Teile/min. Erwaeigen Sie energieeffiziente Module.",
+                "actions": self.get_recommendations("energy_high", lang),
+            })
+        
+        # Check excessive parallel units (inefficiency indicator)
+        for step in process_chain:
+            mod = step.get("module")
+            if mod and mod.get("parallel_units", 1) > 4:
                 recommendations.append({
-                    "type": "bottleneck_detected",
+                    "type": "too_many_parallel",
                     "severity": "warning",
-                    "title_en": "Bottleneck Detected",
-                    "title_de": "Engpass erkannt",
-                    "message_en": f"Module '{mod['name']}' cycle time ({mod.get('cycle_time_s', 0)}s) exceeds takt time buffer ({takt*1.2:.3f}s).",
-                    "message_de": f"Modul '{mod['name']}' Zykluszeit ({mod.get('cycle_time_s', 0)}s) ueberschreitet Taktzeit-Puffer ({takt*1.2:.3f}s).",
-                    "actions": self.get_recommendations("bottleneck_detected", lang),
+                    "title_en": "High Parallel Unit Count",
+                    "title_de": "Hohe Anzahl paralleler Einheiten",
+                    "message_en": f"Module '{mod['name']}' uses {mod['parallel_units']} parallel units. Consider a higher-capacity module to reduce footprint.",
+                    "message_de": f"Modul '{mod['name']}' verwendet {mod['parallel_units']} parallele Einheiten. Erwaeigen Sie ein hoeherkapazitaetsmodul zur Reduzierung des Fussabdrucks.",
+                    "actions": self.get_recommendations("too_many_parallel", lang),
                 })
+        
+        # Check reject rate impact
+        reject_rate = kpis.get("reject_rate", 0)
+        if reject_rate > 0.05:
+            recommendations.append({
+                "type": "high_reject_rate",
+                "severity": "warning",
+                "title_en": "High Reject Rate Impact",
+                "title_de": "Hoher Ausschussraten-Einfluss",
+                "message_en": f"Reject rate is {reject_rate*100:.1f}%. This significantly inflates the required nominal rate and cost.",
+                "message_de": f"Ausschussrate betraegt {reject_rate*100:.1f}%. Dies erhoeht die erforderliche Nennrate und Kosten erheblich.",
+                "actions": self.get_recommendations("high_reject_rate", lang),
+            })
         
         return recommendations
 

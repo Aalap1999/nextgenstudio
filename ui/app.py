@@ -512,6 +512,20 @@ st.markdown("""
         margin-bottom: 8px;
         text-align: center;
     }
+
+    .kpi-scroll {
+        overflow-x: auto;
+        padding: 4px 0 16px 0;
+    }
+    .kpi-row {
+        display: flex;
+        gap: 12px;
+        min-width: max-content;
+    }
+    .kpi-card-scroll {
+        min-width: 180px;
+        flex-shrink: 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -873,50 +887,16 @@ def render_kpi_dashboard(kpis, feasibility):
     else:
         util_class = "ok"
 
-    cards = "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;'>"
+    # Build each card as a compact inline string (no multi-line f-strings to avoid raw HTML issues)
+    c1 = f'<div class="kpi-card kpi-card-scroll {util_class if status == "FAIL" else "neutral"}"><div class="kpi-label">{t("kpi_nominal_rate_title")}</div><div class="kpi-value">{kpis["nominal_rate_ppm"]:.2f}<span class="kpi-unit">{t("kpi_unit_ppm")}</span></div><div class="kpi-desc">{t("kpi_nominal_rate_desc")}</div></div>'
+    c2 = f'<div class="kpi-card kpi-card-scroll neutral"><div class="kpi-label">{t("kpi_takt_time_title")}</div><div class="kpi-value">{kpis["takt_time_s"]:.3f}<span class="kpi-unit">{t("kpi_unit_seconds")}</span></div><div class="kpi-desc">{t("kpi_takt_time_desc")}</div></div>'
+    c3 = f'<div class="kpi-card kpi-card-scroll neutral"><div class="kpi-label">{t("kpi_annual_capacity_title")}</div><div class="kpi-value">{fmt_compact(kpis["annual_capacity"])}<span class="kpi-unit">{t("kpi_unit_pcs")}</span></div><div class="kpi-desc">{t("kpi_annual_capacity_desc")}</div></div>'
+    c4 = f'<div class="kpi-card kpi-card-scroll {util_class}"><div class="kpi-label">{t("kpi_utilization_title")}</div><div class="kpi-value">{util:.1f}<span class="kpi-unit">{t("kpi_unit_percent")}</span></div><div class="kpi-desc">{t("kpi_utilization_desc")}</div></div>'
+    c5 = f'<div class="kpi-card kpi-card-scroll {util_class}"><div class="kpi-label">{t("kpi_feasibility_title")}</div><div class="kpi-value">{t(f"status_{status.lower()}")}</div><div class="kpi-desc">{t("kpi_feasibility_desc")}</div></div>'
 
-    cards += f"""
-    <div class="kpi-card neutral">
-        <div class="kpi-label">{t('kpi_nominal_rate_title')}</div>
-        <div class="kpi-value">{kpis['nominal_rate_ppm']:.2f}<span class="kpi-unit">{t('kpi_unit_ppm')}</span></div>
-        <div class="kpi-desc">{t('kpi_nominal_rate_desc')}</div>
-    </div>
-    """
-
-    cards += f"""
-    <div class="kpi-card neutral">
-        <div class="kpi-label">{t('kpi_takt_time_title')}</div>
-        <div class="kpi-value">{kpis['takt_time_s']:.3f}<span class="kpi-unit">{t('kpi_unit_seconds')}</span></div>
-        <div class="kpi-desc">{t('kpi_takt_time_desc')}</div>
-    </div>
-    """
-
-    cards += f"""
-    <div class="kpi-card neutral">
-        <div class="kpi-label">{t('kpi_annual_capacity_title')}</div>
-        <div class="kpi-value">{fmt_compact(kpis['annual_capacity'])}<span class="kpi-unit">{t('kpi_unit_pcs')}</span></div>
-        <div class="kpi-desc">{t('kpi_annual_capacity_desc')}</div>
-    </div>
-    """
-
-    cards += f"""
-    <div class="kpi-card {util_class}">
-        <div class="kpi-label">{t('kpi_utilization_title')}</div>
-        <div class="kpi-value">{util:.1f}<span class="kpi-unit">{t('kpi_unit_percent')}</span></div>
-        <div class="kpi-desc">{t('kpi_utilization_desc')}</div>
-    </div>
-    """
-
-    cards += f"""
-    <div class="kpi-card {util_class}">
-        <div class="kpi-label">{t('kpi_feasibility_title')}</div>
-        <div class="kpi-value">{t(f'status_{status.lower()}')}</div>
-        <div class="kpi-desc">{t('kpi_feasibility_desc')}</div>
-    </div>
-    """
-
-    cards += "</div>"
-    st.markdown(cards, unsafe_allow_html=True)
+    # Horizontal scroll container - same pattern as pipeline, compact single-line string
+    html = f'<div class="kpi-scroll"><div class="kpi-row">{c1}{c2}{c3}{c4}{c5}</div></div>'
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def render_architecture(line_arch, cost):
