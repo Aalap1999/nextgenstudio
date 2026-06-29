@@ -464,41 +464,19 @@ st.markdown("""
         margin-top: 4px;
     }
 
-    /* Page switcher radio styling */
-    div[data-testid="stRadio"] > div {
-        display: flex;
-        gap: 0;
-        border-radius: 6px;
-        overflow: hidden;
-        border: 1px solid #e5e7eb;
+    /* Navigation section styling - does NOT hide radio internals */
+    .nav-section {
+        border-top: 1px solid #e5e7eb;
+        padding-top: 16px;
+        margin-top: 32px;
     }
-    div[data-testid="stRadio"] > div > label {
-        flex: 1;
-        text-align: center;
-        padding: 8px 12px;
-        margin: 0 !important;
-        cursor: pointer;
-        background: white;
-        color: #374151;
-        font-weight: 600;
-        font-size: 0.85rem;
-        border: none !important;
-    }
-    div[data-testid="stRadio"] > div > label:hover {
-        background: #f3f4f6;
-    }
-    div[data-testid="stRadio"] > div > label[data-selected="true"] {
-        background: #2563eb !important;
-        color: white !important;
-    }
-    div[data-testid="stRadio"] > div > label > div {
-        display: none;
-    }
-    div[data-testid="stRadio"] > div > label > div.st-emotion-cache-1y3tpau {
-        display: none;
-    }
-    div[data-testid="stRadio"] > div > label > div > p {
-        margin: 0;
+    .nav-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 8px;
     }
 
     .compact-display {
@@ -587,7 +565,11 @@ def render_sidebar():
     st.sidebar.markdown("<div style='margin-top:32px;'></div>", unsafe_allow_html=True)
     st.sidebar.markdown("---")
     st.sidebar.markdown(
-        f"<p style='font-size:0.65rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;'>{t('page_nav_label')}</p>",
+        f"""
+        <div class="nav-section">
+            <p class="nav-label">{t('page_nav_label')}</p>
+        </div>
+        """,
         unsafe_allow_html=True
     )
 
