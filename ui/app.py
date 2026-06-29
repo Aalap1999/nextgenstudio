@@ -464,27 +464,12 @@ st.markdown("""
         margin-top: 4px;
     }
 
-    /* Navigation section styling - does NOT hide radio internals */
-    .nav-section {
-        border-top: 1px solid #e5e7eb;
-        padding-top: 16px;
-        margin-top: 32px;
-    }
-    .nav-label {
-        font-size: 0.65rem;
-        font-weight: 700;
-        color: #9ca3af;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin-bottom: 8px;
-    }
-
     .compact-display {
         font-size: 0.75rem;
-        color: #6b7280;
+        color: #2563eb;
         font-weight: 600;
-        margin-top: -6px;
-        margin-bottom: 8px;
+        margin-top: -4px;
+        margin-bottom: 6px;
         text-align: right;
     }
 
@@ -492,8 +477,40 @@ st.markdown("""
         font-size: 0.75rem;
         color: #dc2626;
         font-weight: 600;
-        margin-top: -6px;
+        margin-top: -4px;
+        margin-bottom: 6px;
+    }
+
+    .sidebar-section-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #111827;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         margin-bottom: 8px;
+        margin-top: 16px;
+    }
+
+    .sidebar-divider {
+        border: none;
+        height: 1px;
+        background: #e5e7eb;
+        margin: 12px 0;
+    }
+
+    .footer-nav {
+        border-top: 1px solid #e5e7eb;
+        padding-top: 16px;
+        margin-top: 40px;
+    }
+    .footer-nav-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 8px;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -524,32 +541,6 @@ def render_header():
 
 
 # ===================================================================
-# VALIDATION
-# ===================================================================
-
-def _validate_sidebar_inputs(req_values):
-    """Validate all sidebar inputs and return a list of (field, error_msg) tuples."""
-    errors = []
-    if req_values["output_ppm"] <= 0:
-        errors.append(("output_ppm", t("err_output_ppm_positive")))
-    if req_values["annual_demand"] <= 0:
-        errors.append(("annual_demand", t("err_annual_demand_positive")))
-    if req_values["oee_target"] <= 0 or req_values["oee_target"] > 1:
-        errors.append(("oee_slider", t("err_oee_range")))
-    if req_values["reject_rate"] < 0 or req_values["reject_rate"] >= 1:
-        errors.append(("reject_slider", t("err_reject_range")))
-    if req_values["tolerance_um"] <= 0:
-        errors.append(("tolerance_um", t("err_tolerance_positive")))
-    if req_values["variants"] < 1:
-        errors.append(("variants", t("err_variants_positive")))
-    if req_values["footprint_max_m2"] <= 0:
-        errors.append(("footprint_max", t("err_footprint_positive")))
-    if req_values["budget_max_eur"] <= 0:
-        errors.append(("budget_max", t("err_budget_positive")))
-    return errors
-
-
-# ===================================================================
 # SIDEBAR
 # ===================================================================
 
@@ -557,58 +548,21 @@ def render_sidebar():
     page = st.session_state.get("page", "Configurator")
 
     if page == "Configurator":
-        selected_product, requirements, generate = _render_configurator_sidebar()
+        return _render_configurator_sidebar()
     else:
-        selected_product, requirements, generate = None, None, None
-
-    # --- Developer Navigation (bottom) ---
-    st.sidebar.markdown("<div style='margin-top:32px;'></div>", unsafe_allow_html=True)
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(
-        f"""
-        <div class="nav-section">
-            <p class="nav-label">{t('page_nav_label')}</p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    page_options = ["Configurator", "Component Library"]
-    page_labels = {
-        "Configurator": t("page_configurator"),
-        "Component Library": t("page_library")
-    }
-
-    selected_page = st.sidebar.radio(
-        "",
-        options=page_options,
-        format_func=lambda x: page_labels[x],
-        index=page_options.index(page),
-        horizontal=True,
-        label_visibility="collapsed",
-        key="page_selector"
-    )
-
-    if selected_page != page:
-        st.session_state.page = selected_page
-
-    return selected_product, requirements, generate
+        return _render_library_sidebar()
 
 
 def _render_configurator_sidebar():
     st.sidebar.markdown(f"### {t('sidebar_title')}")
     st.sidebar.caption(t('sidebar_description'))
-    st.sidebar.markdown("---")
 
     products_data = load_and_validate_products()
     product_names = {p["name"]: p for p in products_data["products"]}
     product_name_list = list(product_names.keys())
 
     # Product Section
-    st.sidebar.markdown(
-        f"<p style='font-size:0.8rem; font-weight:700; color:#111827; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;'>{t('section_product')}</p>",
-        unsafe_allow_html=True
-    )
+    st.sidebar.markdown(f'<p class="sidebar-section-title">{t("section_product")}</p>', unsafe_allow_html=True)
 
     if st.session_state.product_idx >= len(product_name_list):
         st.session_state.product_idx = 0
@@ -632,17 +586,14 @@ def _render_configurator_sidebar():
     cat_info = KNOWLEDGE_MODEL.get_product_category_info(selected_product["category"], st.session_state.lang)
     st.sidebar.caption(f"{t('category_label')}: {cat_info['description']}")
     st.sidebar.caption(f"{t('parts_label')}: {', '.join(selected_product['typical_parts_list'])}")
-    st.sidebar.markdown("---")
+
+    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
 
     # Production Section
-    st.sidebar.markdown(
-        f"<p style='font-size:0.8rem; font-weight:700; color:#111827; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;'>{t('section_production')}</p>",
-        unsafe_allow_html=True
-    )
+    st.sidebar.markdown(f'<p class="sidebar-section-title">{t("section_production")}</p>', unsafe_allow_html=True)
 
-    # Output Rate - NO step to avoid browser validation, custom validation instead
     output_ppm = st.sidebar.number_input(
-        t('output_rate_label'), min_value=0.1, value=60.0,
+        t('output_rate_label'), min_value=0.1, value=60.0, step=5.0,
         help=t('output_rate_help'), key="output_ppm"
     )
     st.sidebar.markdown(
@@ -650,9 +601,8 @@ def _render_configurator_sidebar():
         unsafe_allow_html=True
     )
 
-    # Annual Demand - NO step to avoid browser validation
     annual_demand = st.sidebar.number_input(
-        t('annual_demand_label'), min_value=1, value=500000,
+        t('annual_demand_label'), min_value=1, value=500000, step=10000,
         help=t('annual_demand_help'), key="annual_demand"
     )
     st.sidebar.markdown(
@@ -690,13 +640,10 @@ def _render_configurator_sidebar():
     </div>
     """, unsafe_allow_html=True)
 
-    st.sidebar.markdown("---")
+    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
 
     # Quality Section
-    st.sidebar.markdown(
-        f"<p style='font-size:0.8rem; font-weight:700; color:#111827; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;'>{t('section_quality')}</p>",
-        unsafe_allow_html=True
-    )
+    st.sidebar.markdown(f'<p class="sidebar-section-title">{t("section_quality")}</p>', unsafe_allow_html=True)
 
     if st.session_state.cleanroom_check is None:
         st.session_state.cleanroom_check = selected_product["default_cleanroom_requirement"]
@@ -718,26 +665,24 @@ def _render_configurator_sidebar():
         help=t('packaging_help'), key="packaging_check"
     )
     tolerance_um = st.sidebar.number_input(
-        t('tolerance_label'), min_value=0.1, value=100.0,
+        t('tolerance_label'), min_value=0.1, value=100.0, step=1.0,
         help=t('tolerance_help'), key="tolerance_um"
     )
     st.sidebar.markdown(
         f'<p class="compact-display">{tolerance_um:.1f} um</p>',
         unsafe_allow_html=True
     )
-    st.sidebar.markdown("---")
+
+    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
 
     # Constraints Section
-    st.sidebar.markdown(
-        f"<p style='font-size:0.8rem; font-weight:700; color:#111827; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;'>{t('section_constraints')}</p>",
-        unsafe_allow_html=True
-    )
+    st.sidebar.markdown(f'<p class="sidebar-section-title">{t("section_constraints")}</p>', unsafe_allow_html=True)
     variants = st.sidebar.number_input(
-        t('variants_label'), min_value=1, value=1,
+        t('variants_label'), min_value=1, value=1, step=1,
         help=t('variants_help'), key="variants"
     )
     footprint_max = st.sidebar.number_input(
-        t('footprint_label'), min_value=0.1, value=50.0,
+        t('footprint_label'), min_value=0.1, value=50.0, step=1.0,
         help=t('footprint_help'), key="footprint_max"
     )
     st.sidebar.markdown(
@@ -745,7 +690,7 @@ def _render_configurator_sidebar():
         unsafe_allow_html=True
     )
     budget_max = st.sidebar.number_input(
-        t('budget_label'), min_value=1000, value=500000,
+        t('budget_label'), min_value=1000, value=500000, step=10000,
         help=t('budget_help'), key="budget_max"
     )
     st.sidebar.markdown(
@@ -769,13 +714,10 @@ def _render_configurator_sidebar():
     for field, msg in errors:
         st.sidebar.markdown(f'<p class="validation-msg">{msg}</p>', unsafe_allow_html=True)
 
-    st.sidebar.markdown("---")
+    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
 
     # Optimization Section
-    st.sidebar.markdown(
-        f"<p style='font-size:0.8rem; font-weight:700; color:#111827; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;'>{t('section_optimization')}</p>",
-        unsafe_allow_html=True
-    )
+    st.sidebar.markdown(f'<p class="sidebar-section-title">{t("section_optimization")}</p>', unsafe_allow_html=True)
     opt_options = ["cost", "footprint", "energy", "flexibility"]
     opt_labels = {k: t(f"opt_{k}") for k in opt_options}
     optimization = st.sidebar.selectbox(
@@ -785,7 +727,6 @@ def _render_configurator_sidebar():
     )
     opt_info = KNOWLEDGE_MODEL.get_optimization_info(optimization, st.session_state.lang)
     st.sidebar.caption(opt_info["description"])
-    st.sidebar.markdown("---")
 
     requirements = {
         "product_type": selected_product["id"],
@@ -811,6 +752,59 @@ def _render_configurator_sidebar():
     )
 
     return selected_product, requirements, generate
+
+
+def _render_library_sidebar():
+    """Show a brief info panel on the Library page sidebar."""
+    st.sidebar.markdown(f"### {t('page_library')}")
+    st.sidebar.caption(t('library_description'))
+    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
+    st.sidebar.markdown(
+        f"""
+        <div class="info-box">
+            <div class="info-title">{t('library_add_title')}</div>
+            <div class="info-text">{t('library_add_description')}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    return None, None, None
+
+
+# ===================================================================
+# FOOTER NAVIGATION (bottom of main content)
+# ===================================================================
+
+def render_footer_nav():
+    """Developer navigation at the bottom of the main content area."""
+    page = st.session_state.get("page", "Configurator")
+
+    st.markdown("<div class='footer-nav'></div>", unsafe_allow_html=True)
+    st.markdown(f'<p class="footer-nav-label">{t("page_nav_label")}</p>', unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns([2, 2, 2])
+    with c1:
+        pass
+    with c2:
+        if st.button(
+            t("page_configurator"),
+            type="primary" if page == "Configurator" else "secondary",
+            use_container_width=True,
+            key="nav_configurator"
+        ):
+            if page != "Configurator":
+                st.session_state.page = "Configurator"
+                st.rerun()
+    with c3:
+        if st.button(
+            t("page_library"),
+            type="primary" if page == "Component Library" else "secondary",
+            use_container_width=True,
+            key="nav_library"
+        ):
+            if page != "Component Library":
+                st.session_state.page = "Component Library"
+                st.rerun()
 
 
 # ===================================================================
@@ -1188,14 +1182,14 @@ def render_library_page():
             new_id = st.text_input(t('field_id'), help=t('field_id_help'))
             new_name = st.text_input(t('field_name'))
             new_category = st.text_input(t('field_category'), help=t('field_category_help'))
-            new_cycle = st.number_input(t('field_cycle_time'), min_value=0.0, value=1.0, help=t('field_cycle_time_help'))
-            new_capacity = st.number_input(t('field_capacity'), min_value=1.0, value=60.0, help=t('field_capacity_help'))
-            new_footprint = st.number_input(t('field_footprint'), min_value=0.1, value=1.0, help=t('field_footprint_help'))
+            new_cycle = st.number_input(t('field_cycle_time'), min_value=0.0, value=1.0, step=0.1, help=t('field_cycle_time_help'))
+            new_capacity = st.number_input(t('field_capacity'), min_value=1.0, value=60.0, step=5.0, help=t('field_capacity_help'))
+            new_footprint = st.number_input(t('field_footprint'), min_value=0.1, value=1.0, step=0.1, help=t('field_footprint_help'))
         with c2:
-            new_cost = st.number_input(t('field_cost'), min_value=1000, value=25000, help=t('field_cost_help'))
-            new_energy = st.number_input(t('field_energy'), min_value=0.1, value=1.0, help=t('field_energy_help'))
+            new_cost = st.number_input(t('field_cost'), min_value=1000, value=25000, step=1000, help=t('field_cost_help'))
+            new_energy = st.number_input(t('field_energy'), min_value=0.1, value=1.0, step=0.1, help=t('field_energy_help'))
             new_flex = st.slider(t('field_flexibility'), 1, 10, 5, help=t('field_flexibility_help'))
-            new_tolerance = st.number_input(t('field_tolerance'), min_value=1, value=100, help=t('field_tolerance_help'))
+            new_tolerance = st.number_input(t('field_tolerance'), min_value=1, value=100, step=1, help=t('field_tolerance_help'))
             new_var_flex = st.slider(t('field_variant_flex'), 1, 10, 5, help=t('field_variant_flex_help'))
             new_cleanroom = st.checkbox(t('field_cleanroom'), value=True, help=t('field_cleanroom_help'))
 
@@ -1274,6 +1268,9 @@ def main():
             render_welcome()
     else:
         render_library_page()
+
+    # Developer navigation at bottom of main content
+    render_footer_nav()
 
 
 if __name__ == "__main__":
