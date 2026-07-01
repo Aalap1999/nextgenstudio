@@ -460,31 +460,46 @@ The system also computes:
 
 ## Step 6: Checking If It All Works (Feasibility Check)
 
-The system runs a final validation:
+The system runs a final validation with **4 hard fail conditions** and **2 advisory warning conditions**:
 
-### Check 1: Budget
-```
-If Total Cost > Budget → FAIL with "Cost overrun" warning
-```
+### Hard Fail Conditions (Status = FAIL)
 
-### Check 2: Footprint
-```
-If Total Footprint > Max Floor Space → FAIL with "Footprint overrun" warning
-```
+| # | Check | Condition | What It Means |
+|---|-------|-----------|---------------|
+| 1 | **Budget** | Total Cost > Budget Max | The selected modules cost more than your budget. You need to increase budget, reduce output rate, or relax constraints. |
+| 2 | **Footprint** | Total Footprint > Max Floor Space | The line doesn't fit in your factory. You need a smaller configuration or more floor space. |
+| 3 | **Module Coverage** | Any operation has NO compatible module | The system couldn't find any module that can perform a required operation. This usually means your requirements are too strict (e.g., tolerance too tight, cleanroom required but no modules support it). |
+| 4 | **Capacity** | Utilization > 100% | **Your annual demand exceeds the line's maximum possible output.** This is physically impossible — the line cannot produce enough parts to meet your demand, no matter how many shifts you run. You must increase output rate, add parallel lines, or reduce demand. |
 
-### Check 3: Module Coverage
-```
-If any operation has NO compatible module → FAIL with "Missing module" warning
-```
+### Advisory Warning Conditions (Status = PASS, but with warnings)
 
-### Check 4: Capacity Buffer
-```
-If Utilization > 95% → WARNING "Running at critical capacity"
-If Utilization < 30% → WARNING "Over-specified line"
-```
+| # | Check | Condition | What It Means |
+|---|-------|-----------|---------------|
+| 5 | **Critical Capacity** | 95% < Utilization ≤ 100% | The line is running at critical capacity with no buffer. Any unexpected downtime or demand spike will cause missed targets. Consider dual-shift operation or increasing the output rate. |
+| 6 | **Over-Specified** | Utilization < 30% | The line is significantly over-specified for the demand. You're paying for capacity you don't need. Consider reducing output rate, using smaller modules, or planning for future demand growth. |
 
-**If all checks pass → Status = PASS**
-**If any check fails → Status = FAIL**
+### The Ideal Range
+
+The Knowledge Model defines the **ideal utilization range as 30% to 85%**:
+- **30-85%**: ✅ Green zone — optimal balance of capacity and cost
+- **85-95%**: ⚠️ Yellow zone — acceptable but tight, monitor closely
+- **95-100%**: ⚠️ Red zone — critical, no buffer for downtime
+- **>100%**: ❌ **FAIL** — impossible, demand exceeds capacity
+- **<30%**: ⚠️ Yellow zone — wasteful, over-invested
+
+### Why >100% Is a Hard Fail (Not Just a Warning)
+
+If utilization is 115%, it means your annual demand is 15% higher than what the line can physically produce in a year (even running 2 shifts, 250 days/year). This is not a "recommendation" — it is a **mathematical impossibility**.
+
+**Example:**
+- You need 20 million parts/year
+- The line can produce at most 17.3 million parts/year
+- Utilization = 115.7% → **FAIL**
+
+**Actions:** Increase output rate, add a second parallel line, negotiate lower demand, or extend operating hours (3 shifts, 6 days/week).
+
+**If all hard checks pass → Status = PASS**
+**If any hard check fails → Status = FAIL**
 
 The system shows exactly which check failed and why. You can adjust your requirements and try again.
 
@@ -749,7 +764,24 @@ This local copy was discarded. The original requirements dict passed by the call
 
 **Verification:** Medical products now always enforce `cleanroom_required=True` regardless of user input.
 
-### Bug 4: Browser Validation Tooltip on Number Inputs
+### Bug 4: Missing >100% Capacity Utilization Check (LOGIC ERROR)
+
+**What was wrong:** The feasibility logic only checked for utilization > 95% (warning) and < 30% (warning). If utilization exceeded 100% — meaning the annual demand was physically impossible for the line to meet — the system still reported **PASS**.
+
+**Example of the bug:**
+- Output rate: 60 ppm, Annual demand: 20,000,000 units
+- Line capacity: ~17.3 million units/year
+- Utilization: 115.7%
+- **Old result:** Status = PASS, Warning = "Running at critical capacity"
+- **Correct result:** Status = FAIL, "Annual demand exceeds line capacity"
+
+This is a mathematical impossibility, not an engineering trade-off. A line cannot produce 115% of its maximum capacity.
+
+**Fix:** Added a hard fail condition: if utilization > 100%, status = FAIL with message "Annual demand exceeds line capacity. Cannot meet production target."
+
+**Verification:** Test with 60 ppm output and 20M annual demand → correctly returns FAIL with 115.7% utilization.
+
+### Bug 5: Browser Validation Tooltip on Number Inputs
 
 **What was wrong:** The `step=` parameter on `st.number_input()` caused browser validation. When the user typed a value that wasn't a multiple of the step (e.g., 72 with `step=5`), the browser showed "Please enter a valid value" even though 72 was mathematically valid.
 
@@ -857,9 +889,16 @@ The following tests were run to verify the entire system:
 | Module ID uniqueness (26 modules, no duplicates) | ✅ PASS |
 | All product categories supported by at least one module | ✅ PASS |
 | New module with valid tags discovered by engine | ✅ PASS |
+| **Feasibility: Normal config (60ppm, 500k demand) → PASS** | ✅ PASS |
+| **Feasibility: Budget overrun (1000 EUR budget) → FAIL** | ✅ PASS |
+| **Feasibility: Footprint overrun (1 m² max) → FAIL** | ✅ PASS |
+| **Feasibility: Capacity > 100% (60ppm, 20M demand) → FAIL** | ✅ PASS |
+| **Feasibility: Low utilization (60ppm, 1k demand) → PASS + warning** | ✅ PASS |
 
-**Total: 12 tests, 12 passed, 0 failed, 0 errors.**
+**Total: 17 tests, 17 passed, 0 failed, 0 errors.**
+
+**Key result:** Capacity utilization > 100% now correctly returns **FAIL** instead of PASS. Tested with 60 ppm output and 20,000,000 annual demand → utilization = 115.7% → **FAIL** with message "Annual demand exceeds line capacity. Cannot meet production target."
 
 ---
 
-*End of document. Last updated after final bug fixes and verification scan.*
+*End of document. Last updated after feasibility logic fix (>100% = FAIL) and complete verification scan.*

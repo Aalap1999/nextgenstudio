@@ -37,7 +37,10 @@ def generate_concept_report(
     if any(step["status"] == "NO_MODULE_FOUND" for step in process_chain):
         warnings.append("One or more operations have no compatible module.")
         feasibility = "FAIL"
-    if kpis["capacity_utilization"] > 0.95:
+    if kpis["capacity_utilization"] > 1.0:
+        warnings.append(f"Capacity utilization is {kpis['capacity_utilization']*100:.1f}%. Annual demand exceeds line capacity. Cannot meet production target.")
+        feasibility = "FAIL"
+    elif kpis["capacity_utilization"] > 0.95:
         warnings.append("Capacity utilization > 95%. Consider dual-shift or rate increase.")
     if kpis["capacity_utilization"] < 0.3:
         warnings.append("Capacity utilization < 30%. Over-specified line.")

@@ -762,6 +762,16 @@ class KnowledgeModel:
                 "message_de": f"Kapazitaetsauslastung betraegt nur {util*100:.1f}%. Die Linie ist fuer den Bedarf deutlich ueberspezifiziert.",
                 "actions": self.get_recommendations("capacity_utilization_low", lang),
             })
+        elif util > 1.0:
+            recommendations.append({
+                "type": "capacity_utilization_over",
+                "severity": "error",
+                "title_en": "Demand Exceeds Line Capacity",
+                "title_de": "Bedarf ueberschreitet Linienkapazitaet",
+                "message_en": f"Capacity utilization is {util*100:.1f}%. The annual demand exceeds the line's maximum capacity. This configuration is physically impossible.",
+                "message_de": f"Kapazitaetsauslastung betraegt {util*100:.1f}%. Der Jahresbedarf ueberschreitet die maximale Linienkapazitaet. Diese Konfiguration ist physikalisch unmoeglich.",
+                "actions": self.get_recommendations("capacity_utilization_high", lang),
+            })
         elif util > 0.95:
             recommendations.append({
                 "type": "capacity_utilization_high",
