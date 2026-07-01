@@ -551,6 +551,10 @@ def get_i18n() -> I18n:
     """Get current i18n instance."""
     return _i18n
 
+def get_language() -> str:
+    """Get current global language."""
+    return _i18n.lang
+
 def t(key: str) -> str:
     """Shorthand translation function."""
     return _i18n(key)

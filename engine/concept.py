@@ -2,12 +2,13 @@ from typing import Dict, Any, List
 from datetime import datetime
 from .process_chain import generate_process_chain, compute_line_architecture
 from .kpi import compute_kpis
-from utils.i18n import t
+from utils.i18n import t, get_i18n
 
 def generate_concept_report(
     requirements: Dict[str, Any],
     product: Dict[str, Any],
-    modules_db: List[Dict[str, Any]]
+    modules_db: List[Dict[str, Any]],
+    lang: str = "en"
 ) -> Dict[str, Any]:
     """
     Generate a complete concept report. Deterministic and reproducible.
@@ -73,7 +74,7 @@ def generate_concept_report(
         "decision_trace": trace
     }
 
-    recommendations = KNOWLEDGE_MODEL.get_all_recommendations_for_report(report, "en")
+    recommendations = KNOWLEDGE_MODEL.get_all_recommendations_for_report(report, lang)
     report["recommendations"] = recommendations
 
     return report

@@ -11,12 +11,9 @@ from utils.validator import (
     validate_customer_requirements, ValidationError,
     load_json, _validate_module_item
 )
-from utils.i18n import I18n, set_language, t
+from utils.i18n import I18n, set_language, t, get_language
 from engine.concept import generate_concept_report, report_to_markdown
 from engine.knowledge_model import KNOWLEDGE_MODEL
-
-# ===================================================================
-# HELPERS
 # ===================================================================
 
 def fmt_compact(n, decimals=0):
@@ -1161,7 +1158,13 @@ def render_library_page():
         with c1:
             new_id = st.text_input(t('field_id'), help=t('field_id_help'))
             new_name = st.text_input(t('field_name'))
-            new_category = st.text_input(t('field_category'), help=t('field_category_help'))
+            # Known categories from Knowledge Model — user selects from dropdown
+            known_categories = sorted(KNOWLEDGE_MODEL.MODULE_CATEGORIES.keys())
+            new_category = st.selectbox(
+                t('field_category'), known_categories,
+                help="Select from known module categories. This determines how the module is grouped in the library.",
+                key="new_category_select"
+            )
             new_cycle = st.number_input(t('field_cycle_time'), min_value=0.0, value=1.0, step=0.1, help=t('field_cycle_time_help'))
             new_capacity = st.number_input(t('field_capacity'), min_value=1.0, value=60.0, step=5.0, help=t('field_capacity_help'))
             new_footprint = st.number_input(t('field_footprint'), min_value=0.1, value=1.0, step=0.1, help=t('field_footprint_help'))
@@ -1173,16 +1176,30 @@ def render_library_page():
             new_var_flex = st.slider(t('field_variant_flex'), 1, 10, 5, help=t('field_variant_flex_help'))
             new_cleanroom = st.checkbox(t('field_cleanroom'), value=True, help=t('field_cleanroom_help'))
 
+        # Known capability tags from Knowledge Model — user selects from dropdown
+        all_known_tags = sorted(set(
+            tag for op in KNOWLEDGE_MODEL.OPERATIONS.values()
+            for tag in op.get("capability_tags", [])
+        ))
+        new_tags = st.multiselect(
+            "Capability Tags (select at least one)", all_known_tags,
+            help="Select tags that describe what this module can do. The engine uses these tags to match modules to operations. Examples: 'feeding' for part feeders, 'vision' for inspection systems, 'pick_place' for robots.",
+            key="new_tags_multiselect"
+        )
+
         new_industries = st.text_input(t('field_industries'), help=t('field_industries_help'))
-        new_tags = st.text_input(t('field_tags'), help=t('field_tags_help'))
 
         submitted = st.form_submit_button(t('library_add_button'), type="primary")
 
     if submitted:
+        if not new_tags:
+            st.error("Please select at least one capability tag. Without tags, the module will never be found by the engine.")
+            return
+
         new_module = {
             "id": new_id.strip(),
             "name": new_name.strip(),
-            "category": new_category.strip(),
+            "category": new_category,
             "cycle_time_s": new_cycle,
             "capacity_ppm": new_capacity,
             "footprint_m2": new_footprint,
@@ -1190,7 +1207,7 @@ def render_library_page():
             "energy_kw": new_energy,
             "flexibility_score": new_flex,
             "supported_industries": [i.strip() for i in new_industries.split(",") if i.strip()],
-            "capability_tags": [tag.strip() for tag in new_tags.split(",") if tag.strip()],
+            "capability_tags": new_tags,
             "cleanroom_compatible": new_cleanroom,
             "tolerance_um": new_tolerance,
             "variant_flexibility": new_var_flex
@@ -1234,7 +1251,7 @@ def main():
                 modules_db = modules_data["modules"]
 
                 with st.spinner(t('status_generating')):
-                    report = generate_concept_report(requirements, selected_product, modules_db)
+                    report = generate_concept_report(requirements, selected_product, modules_db, lang=get_language())
 
                 render_dashboard(report)
 

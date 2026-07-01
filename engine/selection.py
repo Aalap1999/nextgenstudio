@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Tuple
 from math import ceil
+from copy import deepcopy
 from .kpi import compute_parallel_units
 from .knowledge_model import KNOWLEDGE_MODEL
 
@@ -15,31 +16,23 @@ def stage_hard_filter(
     filtered = []
 
     for mod in modules:
-        reasons = []
-
         # Industry compatibility
         if product["category"] not in mod["supported_industries"]:
-            reasons.append(f"industry '{product['category']}' not supported")
             continue
 
         # Cleanroom compatibility
         if requirements.get("cleanroom_required") and not mod.get("cleanroom_compatible", False):
-            reasons.append("not cleanroom compatible")
             continue
 
         # Tolerance compatibility (skip if module has no tolerance constraint)
         module_tolerance = mod.get("tolerance_um", 9999)
         if module_tolerance < 9999 and requirements["tolerance_um"] < module_tolerance:
-            reasons.append(f"tolerance {requirements['tolerance_um']}um < module {module_tolerance}um")
             continue
 
         # Variant flexibility
         if requirements["variants"] > 1 and mod.get("variant_flexibility", 0) < 2:
-            reasons.append(f"variant flexibility too low for {requirements['variants']} variants")
             continue
 
-        if reasons:
-            continue
         filtered.append(mod)
 
     trace.append(f"STAGE1_HARD_FILTER: {len(filtered)}/{len(modules)} modules passed.")
@@ -51,6 +44,7 @@ def stage_capacity_model(
 ) -> Tuple[List[Dict[str, Any]], List[str]]:
     """
     Stage 2: Compute parallel units for each module.
+    Operates on copies — never mutates the original module dicts.
     """
     trace = []
     for mod in modules:
@@ -124,6 +118,7 @@ def select_best_modules_for_operation(
     """
     Full 3-stage pipeline for a single operation type.
     Returns (ranked_modules, trace).
+    CRITICAL: Deep-copies modules before processing to avoid mutating the original database.
     """
     trace = []
 
@@ -135,8 +130,11 @@ def select_best_modules_for_operation(
     if not matching:
         return [], trace
 
+    # Deep copy to prevent mutation of the original module database
+    matching_copies = [deepcopy(m) for m in matching]
+
     # Stage 1: Hard filter
-    filtered, t1 = stage_hard_filter(matching, requirements, product)
+    filtered, t1 = stage_hard_filter(matching_copies, requirements, product)
     trace.extend(t1)
     if not filtered:
         return [], trace

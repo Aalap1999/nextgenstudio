@@ -33,7 +33,6 @@ def apply_rules(requirements: Dict[str, Any], product: Dict[str, Any]) -> Tuple[
 
     # Rule 1: Product rules (default cleanroom)
     if product["default_cleanroom_requirement"] and not requirements.get("cleanroom_required"):
-        requirements = dict(requirements)
         requirements["cleanroom_required"] = True
         trace.append(f"PRODUCT_RULE: {product['name']} enforces cleanroom requirement.")
 
