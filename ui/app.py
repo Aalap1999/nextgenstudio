@@ -70,7 +70,7 @@ def _init_state():
     if "product_idx" not in st.session_state:
         st.session_state.product_idx = 0
     if "cleanroom_check" not in st.session_state:
-        st.session_state.cleanroom_check = None
+        st.session_state.cleanroom_check = False
     if "_last_product_name" not in st.session_state:
         st.session_state._last_product_name = None
 
@@ -656,11 +656,8 @@ def _render_configurator_sidebar():
     # Quality Section
     st.sidebar.markdown(f'<p class="sidebar-section-title">{t("section_quality")}</p>', unsafe_allow_html=True)
 
-    if st.session_state.cleanroom_check is None:
-        st.session_state.cleanroom_check = selected_product["default_cleanroom_requirement"]
-
     cleanroom = st.sidebar.checkbox(
-        t('cleanroom_label'), value=st.session_state.cleanroom_check,
+        t('cleanroom_label'), 
         help=t('cleanroom_help'), key="cleanroom_check"
     )
     inspection = st.sidebar.checkbox(
