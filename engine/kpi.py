@@ -26,8 +26,14 @@ def compute_kpis(requirements: Dict[str, Any]) -> Dict[str, float]:
     nominal_rate = compute_nominal_rate(output_ppm, oee, reject_rate)
     takt_time = compute_takt_time(nominal_rate)
 
+    # Operating schedule (configurable, defaults to 2-shift, 8h, 250 days)
+    shifts = requirements.get("shifts_per_day", 2)
+    hours = requirements.get("hours_per_shift", 8)
+    days = requirements.get("working_days_per_year", 250)
+    total_hours_per_year = shifts * hours * days
+
     # Annual capacity check
-    annual_capacity = nominal_rate * 60 * 16 * 250  # 2-shift, 250 days/year
+    annual_capacity = nominal_rate * 60 * total_hours_per_year
     annual_demand = requirements["annual_demand"]
     capacity_utilization = annual_demand / annual_capacity if annual_capacity > 0 else 0.0
 
@@ -39,6 +45,9 @@ def compute_kpis(requirements: Dict[str, Any]) -> Dict[str, float]:
         "output_ppm": output_ppm,
         "oee_target": oee,
         "reject_rate": reject_rate,
+        "shifts_per_day": shifts,
+        "hours_per_shift": hours,
+        "working_days_per_year": days,
     }
 
 def compute_parallel_units(nominal_rate_ppm: float, module_capacity_ppm: float) -> int:

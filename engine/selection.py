@@ -29,9 +29,15 @@ def stage_hard_filter(
         if module_tolerance < 9999 and requirements["tolerance_um"] < module_tolerance:
             continue
 
-        # Variant flexibility
-        if requirements["variants"] > 1 and mod.get("variant_flexibility", 0) < 2:
-            continue
+        # Variant flexibility — map variant count to required flexibility score
+        variants = requirements.get("variants", 1)
+        if variants > 1:
+            mod_variant_flex = mod.get("variant_flexibility", 1)
+            # Required flexibility scales with variant count
+            required_flex = {2: 2, 3: 3, 4: 5, 5: 7, 6: 10}
+            min_required = required_flex.get(variants, 10)
+            if mod_variant_flex < min_required:
+                continue
 
         filtered.append(mod)
 

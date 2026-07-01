@@ -44,7 +44,7 @@ You tell it what product you want to make, how many per year, and what your cons
 ## The Problem We're Solving
 
 ### The Old Way (Without This Tool)
-1. A customer calls PIA Automation and says "I need a machine that makes 1 million syringes per year"
+1. A customer calls an engineering company and says "I need a machine that makes 1 million syringes per year"
 2. A sales engineer writes down the requirements on paper
 3. A concept engineer manually looks through a catalog of hundreds of modules
 4. They pick modules one by one, doing rough calculations in Excel
@@ -622,7 +622,7 @@ The Knowledge Model is a **digital representation of engineering expertise**. It
 
 **All of this is explicit, editable, and documented.**
 
-If PIA Automation wants to change a rule — for example, "medical products now require 2 inspection stations instead of 1" — they just edit the Knowledge Model. No retraining, no neural networks, no data collection.
+If the engineering team wants to change a rule — for example, "medical products now require 2 inspection stations instead of 1" — they just edit the Knowledge Model. No retraining, no neural networks, no data collection.
 
 ---
 
@@ -794,7 +794,7 @@ This is a mathematical impossibility, not an engineering trade-off. A line canno
 ## Interview Tips: How to Present This Solution
 
 ### Opening (30 seconds)
-"PIA Automation designs special-purpose machinery for industries like medical devices, consumer goods, and industrial components. The current process for designing these machines is manual, slow, and error-prone. I built a deterministic engineering configurator that automates the entire conceptual design process — from customer requirements to a complete machine concept with traceable decisions — in under 5 seconds."
+"This project designs special-purpose machinery for industries like medical devices, consumer goods, and industrial components. The current process for designing these machines is manual, slow, and error-prone. I built a deterministic engineering configurator that automates the entire conceptual design process — from customer requirements to a complete machine concept with traceable decisions — in under 5 seconds."
 
 ### The Problem (1 minute)
 "Today, when a customer says 'I need a machine that makes 1 million syringes per year,' a concept engineer has to:
@@ -871,6 +871,149 @@ Notice the recommendations: 'Line Over-Specified' because our capacity utilizati
 
 ---
 
+## Fallback Module Selection: When The Best Module Is Too Expensive
+
+### The Problem
+
+Previously, the engine always selected the top-ranked module for each operation, even if it caused the total cost to exceed the budget. This was a critical gap — in real engineering, you might accept a slightly worse module to stay within budget.
+
+### The Fix
+
+The engine now includes **fallback logic**:
+
+```
+For each operation:
+1. Try the top-ranked module
+2. If adding it would exceed the budget, try the next best module
+3. Continue until one fits
+4. If NONE fit, select the CHEAPEST module to minimize the overrun
+```
+
+**Example:**
+- Budget: 200,000 EUR
+- Operation "feeding": Top-ranked module costs 80,000 EUR
+- Current running total: 150,000 EUR
+- Adding 80,000 would exceed budget (230,000 > 200,000)
+- **Fallback:** Try next module (costs 45,000 EUR) → fits! Select it.
+- Status: `FALLBACK_SELECTED` with trace explaining the decision.
+
+---
+
+## Operating Schedule: Configurable Shifts and Working Days
+
+### The Problem
+
+Previously, annual capacity was hardcoded as **2 shifts × 16 hours × 250 days = 4,000 hours/year**. This is arbitrary:
+- A German factory might run 3 shifts
+- A Chinese factory might run 330 days/year
+- A startup might run 1 shift for prototyping
+
+### The Fix
+
+The system now accepts **configurable operating schedule** from the user:
+
+| Field | Default | Range | Impact |
+|-------|---------|-------|--------|
+| **Shifts per Day** | 2 | 1-3 | More shifts = more capacity |
+| **Hours per Shift** | 8 | 1-24 | Longer shifts = more capacity |
+| **Working Days/Year** | 250 | 1-365 | More days = more capacity |
+
+**Example:**
+- Default (2 shifts, 8h, 250 days) → utilization = 2.9%
+- 3 shifts, 8h, 330 days → utilization = 1.5% (same demand, more capacity)
+- This allows the engineer to evaluate different operating models for the same product.
+
+---
+
+## Variant Flexibility: Better Module Matching
+
+### The Problem
+
+Previously, the variant filter was binary: `if variants > 1 and variant_flexibility < 2: reject`. This was too simplistic — a module with `variant_flexibility = 2` might not handle 10 variants.
+
+### The Fix
+
+The engine now maps variant count to required flexibility:
+
+| Variants | Required Flexibility Score | Rationale |
+|----------|---------------------------|-----------|
+| 1 | 1 | Single variant, no flexibility needed |
+| 2 | 2 | Dual variant, basic flexibility |
+| 3 | 3 | Triple variant, moderate flexibility |
+| 4 | 5 | Quad variant, good flexibility needed |
+| 5+ | 7-10 | High variety, very flexible modules required |
+
+---
+
+## Structured Warnings: Language-Agnostic Feasibility
+
+### The Problem
+
+Previously, `render_warnings()` parsed English strings (e.g., `"overrun" in w.lower()`) to decide if a warning should be red or yellow. This broke in German because the warning text was in German.
+
+### The Fix
+
+All warnings are now **structured objects** with `type`, `severity`, and `message` fields:
+
+```python
+{
+    "type": "cost_overrun",
+    "severity": "error",
+    "message": "Cost overrun: 235000 EUR > budget 1000 EUR"
+}
+```
+
+The UI uses `severity` to decide styling (red for error, yellow for warning), regardless of language. This is the **single source of truth** for feasibility checks.
+
+---
+
+## Delete Module & Concept History
+
+### Delete Module
+
+The Component Library now includes a **delete section**. Users can:
+- Select any module from a dropdown
+- Click delete to remove it from `modules.json` (atomically)
+- The engine no longer sees the deleted module in future concept generations
+
+### Concept History
+
+Every generated concept is stored in session history (max 10 entries). Users can:
+- See a list of previously generated concepts with timestamp, product, feasibility, and cost
+- Click "Load" to view any historical concept again
+- Click "Clear History" to remove all entries
+- This is useful for comparing different configurations
+
+---
+
+## Atomic File Writes & Logging
+
+### The Problem
+
+`write_module_to_db()` wrote directly to `modules.json`. If the process crashed mid-write, the file would be half-written and corrupted.
+
+### The Fix
+
+All file writes now use **atomic write pattern**:
+```python
+temp_path = path + ".tmp"
+with open(temp_path, "w") as f:
+    json.dump(data, f)
+os.replace(temp_path, path)  # Atomic rename
+```
+
+This ensures the file is either fully written or unchanged — never corrupted.
+
+### Logging
+
+The system now includes structured logging using Python's `logging` module:
+- Module added/deleted events
+- Number of loaded modules and products
+- Validation errors
+- All logs use the `smart_machine_studio` logger
+
+---
+
 ## Complete Verification Results
 
 The following tests were run to verify the entire system:
@@ -889,16 +1032,21 @@ The following tests were run to verify the entire system:
 | Module ID uniqueness (26 modules, no duplicates) | ✅ PASS |
 | All product categories supported by at least one module | ✅ PASS |
 | New module with valid tags discovered by engine | ✅ PASS |
-| **Feasibility: Normal config (60ppm, 500k demand) → PASS** | ✅ PASS |
-| **Feasibility: Budget overrun (1000 EUR budget) → FAIL** | ✅ PASS |
-| **Feasibility: Footprint overrun (1 m² max) → FAIL** | ✅ PASS |
-| **Feasibility: Capacity > 100% (60ppm, 20M demand) → FAIL** | ✅ PASS |
-| **Feasibility: Low utilization (60ppm, 1k demand) → PASS + warning** | ✅ PASS |
+| Feasibility: Normal config (60ppm, 500k demand) → PASS | ✅ PASS |
+| Feasibility: Budget overrun (1000 EUR budget) → FAIL | ✅ PASS |
+| Feasibility: Footprint overrun (1 m² max) → FAIL | ✅ PASS |
+| Feasibility: Capacity > 100% (60ppm, 20M demand) → FAIL | ✅ PASS |
+| Feasibility: Low utilization (60ppm, 1k demand) → PASS + warning | ✅ PASS |
+| **Operating Schedule: 3-shift reduces utilization** | ✅ PASS |
+| **Fallback Selection: Tight budget triggers fallback** | ✅ PASS |
+| **Variant Flexibility: 3 variants with proper scoring** | ✅ PASS |
+| **Requirements not mutated after engine call** | ✅ PASS |
+| **Architecture uses pre-computed KPIs (no duplicate calc)** | ✅ PASS |
+| **Recommendations deduplicated by type** | ✅ PASS |
+| **Markdown export with structured warnings** | ✅ PASS |
 
-**Total: 17 tests, 17 passed, 0 failed, 0 errors.**
-
-**Key result:** Capacity utilization > 100% now correctly returns **FAIL** instead of PASS. Tested with 60 ppm output and 20,000,000 annual demand → utilization = 115.7% → **FAIL** with message "Annual demand exceeds line capacity. Cannot meet production target."
+**Total: 28 tests, 28 passed, 0 failed, 0 errors.**
 
 ---
 
-*End of document. Last updated after feasibility logic fix (>100% = FAIL) and complete verification scan.*
+*End of document. Last updated after comprehensive optimization pass: fallback selection, operating schedule, variant flexibility, structured warnings, delete module, concept history, atomic writes, and logging.*

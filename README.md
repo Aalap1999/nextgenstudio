@@ -1,7 +1,7 @@
 # NextGen Smart Machine Studio
 
 **A deterministic engineering configurator for special-purpose machinery.**  
-Developed by Aalap Janve as a Master's Thesis prototype at PIA Automation.
+Developed by **Aalap Janve** as a Master's Thesis portfolio project.
 
 ---
 
@@ -112,6 +112,6 @@ The engine logic is covered by a comprehensive test suite that validates:
 
 ## About
 
-This project was developed by **Aalap Janve** as a Master's Thesis prototype at **PIA Automation**. The goal was to demonstrate how deterministic engineering synthesis can replace manual conceptual design for special-purpose machinery, with full traceability and no black-box decision-making.
+This project was developed by **Aalap Janve** as a Master's Thesis portfolio project. The goal is to demonstrate how deterministic engineering synthesis can replace manual conceptual design for special-purpose machinery, with full traceability and no black-box decision-making.
 
 ---

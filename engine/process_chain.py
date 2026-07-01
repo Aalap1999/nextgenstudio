@@ -3,6 +3,27 @@ from .selection import select_best_modules_for_operation
 from .kpi import compute_kpis
 from .rules import apply_rules
 
+def _pick_best_with_fallback(
+    ranked_modules: List[Dict[str, Any]],
+    current_total_cost: float,
+    budget_max: float
+) -> Tuple[Dict[str, Any], str]:
+    """
+    Try modules in rank order until one fits within the remaining budget.
+    If none fit, return the cheapest module with a fallback note.
+    """
+    if not ranked_modules:
+        return None, "NO_MODULE_FOUND"
+
+    for candidate in ranked_modules:
+        projected_cost = current_total_cost + candidate["total_cost"]
+        if projected_cost <= budget_max:
+            return candidate, "SELECTED"
+
+    # None fit — pick the cheapest to minimize overrun
+    cheapest = min(ranked_modules, key=lambda m: m["total_cost"])
+    return cheapest, "FALLBACK_SELECTED"
+
 def generate_process_chain(
     requirements: Dict[str, Any],
     product: Dict[str, Any],
@@ -10,6 +31,8 @@ def generate_process_chain(
 ) -> Tuple[List[Dict[str, Any]], List[str], Dict[str, Any]]:
     """
     Generate the full process chain with module selection.
+    Includes fallback logic: if the top-ranked module exceeds budget,
+    the engine tries the next best one. If none fit, it selects the cheapest.
     Returns (process_chain, trace, kpis).
     """
     trace = []
@@ -20,6 +43,9 @@ def generate_process_chain(
     trace.extend(rule_trace)
 
     process_chain = []
+    running_total = 0.0
+    budget_max = requirements.get("budget_max_eur", float('inf'))
+
     for op in operations:
         if not op.get("required", False):
             continue
@@ -40,41 +66,44 @@ def generate_process_chain(
                 "notes": op.get("notes", "")
             })
             trace.append(f"WARNING: No compatible module found for operation '{op_type}'.")
-        else:
-            best = ranked_modules[0]
-            process_chain.append({
-                "step": op["step"],
-                "operation_type": op_type,
-                "module": {
-                    "id": best["id"],
-                    "name": best["name"],
-                    "category": best["category"],
-                    "capacity_ppm": best["capacity_ppm"],
-                    "cycle_time_s": best["cycle_time_s"],
-                    "parallel_units": best["parallel_units"],
-                    "total_cost": best["total_cost"],
-                    "total_footprint": best["total_footprint"],
-                    "total_energy": best["total_energy"],
-                    "score": best["score"]
-                },
+            continue
+
+        best, status = _pick_best_with_fallback(ranked_modules, running_total, budget_max)
+        running_total += best["total_cost"]
+
+        process_chain.append({
+            "step": op["step"],
+            "operation_type": op_type,
+            "module": {
+                "id": best["id"],
+                "name": best["name"],
+                "category": best["category"],
+                "capacity_ppm": best["capacity_ppm"],
+                "cycle_time_s": best["cycle_time_s"],
                 "parallel_units": best["parallel_units"],
-                "status": "SELECTED",
-                "notes": op.get("notes", "")
-            })
+                "total_cost": best["total_cost"],
+                "total_footprint": best["total_footprint"],
+                "total_energy": best["total_energy"],
+                "score": best["score"]
+            },
+            "parallel_units": best["parallel_units"],
+            "status": status,
+            "notes": op.get("notes", "")
+        })
+        if status == "FALLBACK_SELECTED":
+            trace.append(f"FALLBACK: {best['name']} (x{best['parallel_units']}) for '{op_type}' — top-ranked modules exceeded budget. Selected cheapest alternative.")
+        else:
             trace.append(f"SELECTED: {best['name']} (x{best['parallel_units']}) for '{op_type}' with score={best['score']}")
 
     return process_chain, trace, kpis
 
-def compute_line_architecture(process_chain: List[Dict[str, Any]], requirements: Dict[str, Any]) -> Dict[str, Any]:
+def compute_line_architecture(process_chain: List[Dict[str, Any]], requirements: Dict[str, Any], kpis: Dict[str, Any]) -> Dict[str, Any]:
     """
     Determine line architecture based on throughput, footprint, and variant constraints.
-    Uses the NOMINAL rate (accounting for OEE and rejects), not the raw output target.
+    Uses the NOMINAL rate (accounting for OEE and rejects) from pre-computed KPIs.
     """
-    # Compute nominal rate from requirements (same formula as KPI engine)
-    output_ppm = requirements.get("output_ppm", 1)
-    oee = requirements.get("oee_target", 1.0)
-    reject = requirements.get("reject_rate", 0.0)
-    nominal_rate = output_ppm / (oee * (1 - reject)) if oee > 0 and reject < 1 else output_ppm
+    # Use pre-computed nominal rate from KPIs instead of recalculating
+    nominal_rate = kpis.get("nominal_rate_ppm", 1)
 
     footprint_max = requirements.get("footprint_max_m2", 9999)
     variants = requirements.get("variants", 1)

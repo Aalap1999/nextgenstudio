@@ -2,6 +2,15 @@ import streamlit as st
 import json
 import os
 import sys
+import re
+import logging
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("smart_machine_studio")
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
@@ -15,6 +24,8 @@ from utils.i18n import I18n, set_language, t, get_language
 from engine.concept import generate_concept_report, report_to_markdown
 from engine.knowledge_model import KNOWLEDGE_MODEL
 # ===================================================================
+
+__all__ = ["main"]
 
 def fmt_compact(n, decimals=0):
     """Format number with k/M suffix. 20000 -> 20k, 1500000 -> 1.5M"""
@@ -37,24 +48,37 @@ def get_module_data_path():
 
 
 def write_module_to_db(new_module: dict) -> None:
-    """Append a validated module to the modules.json file."""
+    """Append a validated module to the modules.json file atomically."""
     path = get_module_data_path()
     data = load_json(path)
     data["modules"].append(new_module)
-    with open(path, "w", encoding="utf-8") as f:
+    
+    # Atomic write: write to temp file, then replace
+    temp_path = path + ".tmp"
+    with open(temp_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+    os.replace(temp_path, path)
+    logger.info("Added module %s to database. Total modules: %d", new_module["id"], len(data["modules"]))
 
 
-def get_architecture_display_name(arch_type: str, lang: str) -> str:
-    """Translate architecture type to localized display name."""
-    mapping = {
-        "linear_transport_system": {"en": "Linear Transport System (High Throughput)", "de": "Linear-Transportsystem (Hoher Durchsatz)"},
-        "pallet_conveyor": {"en": "Pallet Conveyor (Medium Throughput)", "de": "Paletten-Foerderer (Mittlerer Durchsatz)"},
-        "rotary_indexing_table": {"en": "Rotary Indexing Table (Compact / Low Throughput)", "de": "Rundtakt-Tisch (Kompakt / Niedriger Durchsatz)"},
-        "hybrid_flexible": {"en": "Hybrid Flexible System (Robot + Flexible Feeders)", "de": "Hybrides Flexibles System (Roboter + Flexible Zufuehrer)"},
-    }
-    entry = mapping.get(arch_type, {})
-    return entry.get(lang, entry.get("en", arch_type))
+def delete_module_from_db(module_id: str) -> None:
+    """Remove a module from the modules.json file atomically."""
+    path = get_module_data_path()
+    data = load_json(path)
+    original_count = len(data["modules"])
+    data["modules"] = [m for m in data["modules"] if m["id"] != module_id]
+    if len(data["modules"]) == original_count:
+        raise ValueError(f"Module {module_id} not found")
+    temp_path = path + ".tmp"
+    with open(temp_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    os.replace(temp_path, path)
+    logger.info("Deleted module %s from database. Total modules: %d", module_id, len(data["modules"]))
+
+
+def _sanitize_module_id(module_id: str) -> bool:
+    """Validate module ID format to prevent injection."""
+    return bool(re.match(r'^[a-zA-Z0-9_\-]+$', module_id))
 
 
 # ===================================================================
@@ -73,6 +97,16 @@ def _init_state():
         st.session_state.cleanroom_check = False
     if "_last_product_name" not in st.session_state:
         st.session_state._last_product_name = None
+    if "concept_history" not in st.session_state:
+        st.session_state.concept_history = []
+    if "_load_history_idx" not in st.session_state:
+        st.session_state._load_history_idx = None
+    if "_compare_idx_a" not in st.session_state:
+        st.session_state._compare_idx_a = None
+    if "_compare_idx_b" not in st.session_state:
+        st.session_state._compare_idx_b = None
+    if "_dev_test_result" not in st.session_state:
+        st.session_state._dev_test_result = None
 
 
 _init_state()
@@ -412,9 +446,6 @@ st.markdown("""
     .progress-fill.warn { background: #d97706; }
     .progress-fill.danger { background: #dc2626; }
 
-    .css-1oe6wy4 h1 { font-size: 1.0rem !important; color: #111827 !important; font-weight: 700 !important; }
-    .css-1oe6wy4 h2 { font-size: 0.88rem !important; color: #374151 !important; font-weight: 600 !important; }
-
     .step-card {
         background: white;
         border: 1px solid #e5e7eb;
@@ -523,6 +554,67 @@ st.markdown("""
         min-width: 180px;
         flex-shrink: 0;
     }
+
+    /* ═══════ MOBILE RESPONSIVENESS ═══════ */
+    @media (max-width: 768px) {
+        .studio-header {
+            padding: 16px 20px;
+            margin-bottom: 16px;
+        }
+        .studio-title { font-size: 1.3rem; }
+        .studio-subtitle { font-size: 0.8rem; }
+        .studio-author { font-size: 0.75rem; }
+        .kpi-card {
+            padding: 14px 12px;
+        }
+        .kpi-value { font-size: 1.3rem; }
+        .kpi-unit { font-size: 0.75rem; }
+        .kpi-desc { font-size: 0.7rem; }
+        .kpi-card-scroll { min-width: 140px; }
+        .arch-banner { padding: 14px 16px; }
+        .arch-title { font-size: 1rem; }
+        .arch-reason { font-size: 0.82rem; }
+        .arch-metrics { gap: 12px; }
+        .arch-metric-value { font-size: 1rem; }
+        .pipe-step {
+            min-width: 120px;
+            padding: 10px 8px;
+        }
+        .pipe-name { font-size: 0.6rem; }
+        .pipe-module { font-size: 0.75rem; }
+        .step-card { padding: 12px; }
+        .step-num { font-size: 1.1rem; }
+        .step-title { font-size: 0.82rem; }
+        .step-text { font-size: 0.75rem; }
+        .section-title {
+            font-size: 0.95rem;
+            margin: 16px 0 6px 0;
+        }
+        .rec-card { padding: 12px; }
+        .rec-title { font-size: 0.85rem; }
+        .rec-message { font-size: 0.8rem; }
+        .trace-card {
+            padding: 12px;
+            font-size: 0.7rem;
+        }
+        .footer-nav {
+            margin-top: 24px;
+            padding-top: 12px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .studio-header { padding: 12px 16px; }
+        .studio-title { font-size: 1.1rem; }
+        .kpi-value { font-size: 1.1rem; }
+        .kpi-card-scroll { min-width: 120px; }
+        .pipe-step {
+            min-width: 100px;
+            padding: 8px 6px;
+        }
+        .arch-metric-value { font-size: 0.9rem; }
+        .lib-stat-value { font-size: 1.2rem; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -561,7 +653,27 @@ def render_sidebar():
     if page == "Configurator":
         return _render_configurator_sidebar()
     else:
-        return _render_library_sidebar()
+        return _render_developer_sidebar()
+
+
+def _render_developer_sidebar():
+    """Show a brief info panel on the Developer Tools page sidebar."""
+    st.sidebar.markdown(f"### {t('page_developer')}")
+    st.sidebar.caption(t('dev_tools_description'))
+    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
+    st.sidebar.markdown(
+        f"""
+        <div class="info-box">
+            <div class="info-title">{t('dev_back')}</div>
+            <div class="info-text">Click below to return to the Configurator.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    if st.sidebar.button(t('dev_back'), use_container_width=True, key="dev_back_btn"):
+        st.session_state.page = "Configurator"
+        st.rerun()
+    return None, None, None
 
 
 def _render_configurator_sidebar():
@@ -724,6 +836,22 @@ def _render_configurator_sidebar():
 
     st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
 
+    # Operating Schedule Section
+    st.sidebar.markdown(f'<p class="sidebar-section-title">{t("section_schedule")}</p>', unsafe_allow_html=True)
+    shifts_per_day = st.sidebar.number_input(
+        t('shifts_label'), min_value=1, max_value=3, value=2, step=1,
+        help=t('shifts_help'), key="shifts_per_day"
+    )
+    hours_per_shift = st.sidebar.number_input(
+        t('hours_label'), min_value=1, max_value=24, value=8, step=1,
+        help=t('hours_help'), key="hours_per_shift"
+    )
+    working_days = st.sidebar.number_input(
+        t('days_label'), min_value=1, max_value=365, value=250, step=1,
+        help=t('days_help'), key="working_days"
+    )
+    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
+
     # Optimization Section
     st.sidebar.markdown(f'<p class="sidebar-section-title">{t("section_optimization")}</p>', unsafe_allow_html=True)
     opt_options = ["cost", "footprint", "energy", "flexibility"]
@@ -750,6 +878,9 @@ def _render_configurator_sidebar():
         "packaging_required": packaging,
         "footprint_max_m2": footprint_max,
         "budget_max_eur": budget_max,
+        "shifts_per_day": shifts_per_day,
+        "hours_per_shift": hours_per_shift,
+        "working_days_per_year": working_days,
         "optimization_priority": optimization
     }
 
@@ -758,6 +889,27 @@ def _render_configurator_sidebar():
         use_container_width=True, help=t('generate_help'),
         key="generate_btn", disabled=bool(errors)
     )
+
+    # Reset button (secondary, below generate)
+    if st.sidebar.button(
+        t('reset_button'), type="secondary",
+        use_container_width=True, help=t('reset_help'),
+        key="reset_btn"
+    ):
+        # Clear all widget-managed session state keys to reset to defaults
+        keys_to_clear = [
+            "output_ppm", "annual_demand", "oee_slider", "reject_slider",
+            "cleanroom_check", "inspection_check", "traceability_check",
+            "packaging_check", "tolerance_um", "variants",
+            "footprint_max", "budget_max",
+            "shifts_per_day", "hours_per_shift", "working_days",
+            "optimization", "product_choice",
+            "_last_product_name", "product_idx",
+        ]
+        for k in keys_to_clear:
+            if k in st.session_state:
+                del st.session_state[k]
+        st.rerun()
 
     return selected_product, requirements, generate
 
@@ -790,7 +942,7 @@ def render_footer_nav():
     st.markdown("<div class='footer-nav'></div>", unsafe_allow_html=True)
     st.markdown(f'<p class="footer-nav-label">{t("page_nav_label")}</p>', unsafe_allow_html=True)
 
-    c1, c2, c3 = st.columns([2, 2, 2])
+    c1, c2, c3 = st.columns([1, 3, 3])
     with c1:
         pass
     with c2:
@@ -805,13 +957,13 @@ def render_footer_nav():
                 st.rerun()
     with c3:
         if st.button(
-            t("page_library"),
-            type="primary" if page == "Component Library" else "secondary",
+            t("page_developer"),
+            type="primary" if page == "Developer" else "secondary",
             use_container_width=True,
-            key="nav_library"
+            key="nav_developer"
         ):
-            if page != "Component Library":
-                st.session_state.page = "Component Library"
+            if page != "Developer":
+                st.session_state.page = "Developer"
                 st.rerun()
 
 
@@ -896,9 +1048,8 @@ def render_kpi_dashboard(kpis, feasibility):
 def render_architecture(line_arch, cost):
     st.markdown(f"<div class='section-title'>{t('arch_section_title')}</div>", unsafe_allow_html=True)
 
-    arch_name = get_architecture_display_name(line_arch.get("type", ""), st.session_state.lang)
-    if not arch_name:
-        arch_name = line_arch.get('name', '')
+    # Use the engine's localized name directly — no duplicate mapping
+    arch_name = line_arch.get('name', '')
 
     st.markdown(f"""
     <div class="arch-banner">
@@ -995,10 +1146,16 @@ def render_warnings(feasibility):
         return
     st.markdown(f"<div class='section-title'>{t('warnings_title')}</div>", unsafe_allow_html=True)
     for w in feasibility["warnings"]:
-        if "overrun" in w.lower() or "exceed" in w.lower() or "budget" in w.lower() or "footprint" in w.lower():
-            st.markdown(f'<div class="error-box">{w}</div>', unsafe_allow_html=True)
+        if isinstance(w, dict):
+            severity = w.get("severity", "warning")
+            message = w.get("message", "")
         else:
-            st.markdown(f'<div class="warn-box">{w}</div>', unsafe_allow_html=True)
+            severity = "warning"
+            message = str(w)
+        if severity == "error":
+            st.markdown(f'<div class="error-box">{message}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="warn-box">{message}</div>', unsafe_allow_html=True)
 
 
 def render_recommendations(recommendations):
@@ -1147,6 +1304,8 @@ def render_library_page():
 
     st.dataframe(table_data, use_container_width=True, hide_index=True)
 
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
     st.markdown(f"<div class='section-title'>{t('library_add_title')}</div>", unsafe_allow_html=True)
     st.caption(t('library_add_description'))
 
@@ -1189,6 +1348,12 @@ def render_library_page():
         submitted = st.form_submit_button(t('library_add_button'), type="primary")
 
     if submitted:
+        if not new_id.strip():
+            st.error(f"{t('library_add_error')}: Module ID is required")
+            return
+        if not _sanitize_module_id(new_id.strip()):
+            st.error(f"{t('library_add_error')}: Module ID must contain only letters, numbers, underscores, and hyphens")
+            return
         if not new_tags:
             st.error("Please select at least one capability tag. Without tags, the module will never be found by the engine.")
             return
@@ -1231,6 +1396,472 @@ def render_library_page():
 
 
 # ===================================================================
+# DEVELOPER TOOLS PAGE
+# ===================================================================
+
+def render_developer_page():
+    """Developer-only tools: history, compare, delete, quick test, stats."""
+    st.markdown(f"<div class='section-title'>{t('dev_tools_title')}</div>", unsafe_allow_html=True)
+    st.caption(t('dev_tools_description'))
+
+    # --- Concept History ---
+    st.markdown(f"<div class='section-title'>{t('dev_history_title')}</div>", unsafe_allow_html=True)
+    st.caption(t('dev_history_description'))
+
+    history = st.session_state.get("concept_history", [])
+    if not history:
+        st.info(t('dev_no_history'))
+    else:
+        for i, entry in enumerate(history):
+            col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+            with col1:
+                status_color = "🟢" if entry["feasibility"] == "PASS" else "🔴"
+                st.markdown(
+                    f"{status_color} **{entry['product_name']}** — "
+                    f"{fmt_compact(entry['total_cost'])} EUR — "
+                    f"{entry['timestamp'][:19].replace('T', ' ')}",
+                    help="Click Load to view this concept again"
+                )
+            with col2:
+                if st.button(t('dev_load'), key=f"dev_history_load_{i}"):
+                    st.session_state._load_history_idx = i
+                    st.session_state.page = "Configurator"
+                    st.rerun()
+            with col3:
+                if st.button(t('dev_compare'), key=f"dev_history_compare_{i}"):
+                    if st.session_state._compare_idx_a is None:
+                        st.session_state._compare_idx_a = i
+                    elif st.session_state._compare_idx_b is None and i != st.session_state._compare_idx_a:
+                        st.session_state._compare_idx_b = i
+                    else:
+                        st.session_state._compare_idx_a = i
+                        st.session_state._compare_idx_b = None
+                    st.rerun()
+            with col4:
+                if st.button(t('dev_remove'), key=f"dev_history_remove_{i}"):
+                    st.session_state.concept_history.pop(i)
+                    st.rerun()
+
+        if st.button(t('history_clear'), key="dev_history_clear"):
+            st.session_state.concept_history = []
+            st.session_state._compare_idx_a = None
+            st.session_state._compare_idx_b = None
+            st.rerun()
+
+    # --- Compare Mode ---
+    if st.session_state._compare_idx_a is not None:
+        st.markdown(f"<div class='section-title'>{t('dev_compare_title')}</div>", unsafe_allow_html=True)
+        st.caption(t('dev_compare_description'))
+
+        a_idx = st.session_state._compare_idx_a
+        b_idx = st.session_state._compare_idx_b
+
+        c_a, c_b = st.columns(2)
+        with c_a:
+            options_a = [f"{i}: {h['product_name']}" for i, h in enumerate(history)]
+            sel_a = st.selectbox(
+                t('dev_compare_select_1'), options_a,
+                index=a_idx if a_idx is not None and a_idx < len(history) else 0,
+                key="compare_select_a"
+            )
+            a_idx = int(sel_a.split(":")[0])
+        with c_b:
+            options_b = [f"{i}: {h['product_name']}" for i, h in enumerate(history)]
+            default_b = b_idx if b_idx is not None and b_idx < len(history) else (1 if len(history) > 1 else 0)
+            sel_b = st.selectbox(
+                t('dev_compare_select_2'), options_b,
+                index=default_b,
+                key="compare_select_b"
+            )
+            b_idx = int(sel_b.split(":")[0])
+
+        st.session_state._compare_idx_a = a_idx
+        st.session_state._compare_idx_b = b_idx
+
+        if a_idx == b_idx:
+            st.warning("Select two different concepts to compare.")
+        else:
+            entry_a = history[a_idx]
+            entry_b = history[b_idx]
+            report_a = entry_a["report"]
+            report_b = entry_b["report"]
+
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown(f"**{entry_a['product_name']}**")
+                st.markdown(f"Feasibility: `{entry_a['feasibility']}`")
+                st.markdown(f"Cost: **{fmt_compact(entry_a['total_cost'])} EUR**")
+                kpis_a = report_a.get("kpis", {})
+                st.markdown(f"Utilization: `{kpis_a.get('capacity_utilization', 0)*100:.1f}%`")
+                st.markdown(f"Takt: `{kpis_a.get('takt_time_s', 0):.3f}s`")
+                arch_a = report_a.get("line_architecture", {})
+                st.markdown(f"Architecture: `{arch_a.get('name', 'N/A')}`")
+            with col_b:
+                st.markdown(f"**{entry_b['product_name']}**")
+                st.markdown(f"Feasibility: `{entry_b['feasibility']}`")
+                st.markdown(f"Cost: **{fmt_compact(entry_b['total_cost'])} EUR**")
+                kpis_b = report_b.get("kpis", {})
+                st.markdown(f"Utilization: `{kpis_b.get('capacity_utilization', 0)*100:.1f}%`")
+                st.markdown(f"Takt: `{kpis_b.get('takt_time_s', 0):.3f}s`")
+                arch_b = report_b.get("line_architecture", {})
+                st.markdown(f"Architecture: `{arch_b.get('name', 'N/A')}`")
+
+            # Cost difference
+            cost_diff = entry_b['total_cost'] - entry_a['total_cost']
+            diff_pct = (cost_diff / entry_a['total_cost'] * 100) if entry_a['total_cost'] else 0
+            st.markdown(f"**Cost Difference:** {fmt_compact(cost_diff)} EUR ({diff_pct:+.1f}%)")
+
+        if st.button("Clear Comparison", key="clear_compare"):
+            st.session_state._compare_idx_a = None
+            st.session_state._compare_idx_b = None
+            st.rerun()
+
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # --- Component Library ---
+    st.markdown(f"<div class='section-title'>{t('library_title')}</div>", unsafe_allow_html=True)
+    st.caption(t('library_description'))
+
+    try:
+        modules_data = load_and_validate_modules()
+        modules = modules_data["modules"]
+    except Exception as e:
+        st.error(f"{t('error_loading_modules')}: {e}")
+        modules = []
+
+    if modules:
+        categories = sorted(set(m["category"] for m in modules))
+        costs = [m["cost_eur"] for m in modules]
+
+        s1, s2, s3 = st.columns(3)
+        with s1:
+            st.markdown(f"""
+            <div class="lib-stat-card">
+                <div class="lib-stat-value">{len(modules)}</div>
+                <div class="lib-stat-label">{t('library_stats_modules')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with s2:
+            st.markdown(f"""
+            <div class="lib-stat-card">
+                <div class="lib-stat-value">{len(categories)}</div>
+                <div class="lib-stat-label">{t('library_stats_categories')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with s3:
+            st.markdown(f"""
+            <div class="lib-stat-card">
+                <div class="lib-stat-value">{fmt_compact(min(costs))} - {fmt_compact(max(costs))}</div>
+                <div class="lib-stat-label">{t('library_stats_cost_range')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown(f"<div class='section-title'>{t('library_table_title')}</div>", unsafe_allow_html=True)
+
+        table_data = []
+        for m in modules:
+            cat_name = KNOWLEDGE_MODEL.get_module_category_name(m["category"], st.session_state.lang)
+            cleanroom_str = t("yes") if m["cleanroom_compatible"] else t("no")
+            tolerance_str = f"{m['tolerance_um']} um" if m["tolerance_um"] < 9999 else t("na")
+            table_data.append({
+                t('lib_col_name'): m["name"],
+                t('lib_col_category'): cat_name,
+                t('lib_col_cost'): f"{fmt_compact(m['cost_eur'])} EUR",
+                t('lib_col_capacity'): f"{m['capacity_ppm']} ppm",
+                t('lib_col_footprint'): f"{m['footprint_m2']} m2",
+                t('lib_col_energy'): f"{m['energy_kw']} kW",
+                t('lib_col_flex'): m["flexibility_score"],
+                t('lib_col_cleanroom'): cleanroom_str,
+                t('lib_col_tolerance'): tolerance_str,
+                t('lib_col_var_flex'): m["variant_flexibility"],
+            })
+
+        st.dataframe(table_data, use_container_width=True, hide_index=True)
+
+        st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+        st.markdown(f"<div class='section-title'>{t('library_add_title')}</div>", unsafe_allow_html=True)
+        st.caption(t('library_add_description'))
+
+        with st.form("add_module_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                new_id = st.text_input(t('field_id'), help=t('field_id_help'))
+                new_name = st.text_input(t('field_name'))
+                known_categories = sorted(KNOWLEDGE_MODEL.MODULE_CATEGORIES.keys())
+                new_category = st.selectbox(
+                    t('field_category'), known_categories,
+                    help="Select from known module categories. This determines how the module is grouped in the library.",
+                    key="new_category_select"
+                )
+                new_cycle = st.number_input(t('field_cycle_time'), min_value=0.0, value=1.0, step=0.1, help=t('field_cycle_time_help'))
+                new_capacity = st.number_input(t('field_capacity'), min_value=1.0, value=60.0, step=5.0, help=t('field_capacity_help'))
+                new_footprint = st.number_input(t('field_footprint'), min_value=0.1, value=1.0, step=0.1, help=t('field_footprint_help'))
+            with c2:
+                new_cost = st.number_input(t('field_cost'), min_value=1000, value=25000, step=1000, help=t('field_cost_help'))
+                new_energy = st.number_input(t('field_energy'), min_value=0.1, value=1.0, step=0.1, help=t('field_energy_help'))
+                new_flex = st.slider(t('field_flexibility'), 1, 10, 5, help=t('field_flexibility_help'))
+                new_tolerance = st.number_input(t('field_tolerance'), min_value=1, value=100, step=1, help=t('field_tolerance_help'))
+                new_var_flex = st.slider(t('field_variant_flex'), 1, 10, 5, help=t('field_variant_flex_help'))
+                new_cleanroom = st.checkbox(t('field_cleanroom'), value=True, help=t('field_cleanroom_help'))
+
+            all_known_tags = sorted(set(
+                tag for op in KNOWLEDGE_MODEL.OPERATIONS.values()
+                for tag in op.get("capability_tags", [])
+            ))
+            new_tags = st.multiselect(
+                "Capability Tags (select at least one)", all_known_tags,
+                help="Select tags that describe what this module can do. The engine uses these tags to match modules to operations.",
+                key="new_tags_multiselect"
+            )
+
+            new_industries = st.text_input(t('field_industries'), help=t('field_industries_help'))
+
+            submitted = st.form_submit_button(t('library_add_button'), type="primary")
+
+        if submitted:
+            valid = True
+            if not new_id.strip():
+                st.error(f"{t('library_add_error')}: Module ID is required")
+                valid = False
+            if valid and not _sanitize_module_id(new_id.strip()):
+                st.error(f"{t('library_add_error')}: Module ID must contain only letters, numbers, underscores, and hyphens")
+                valid = False
+            if valid and not new_tags:
+                st.error("Please select at least one capability tag. Without tags, the module will never be found by the engine.")
+                valid = False
+
+            if valid:
+                new_module = {
+                    "id": new_id.strip(),
+                    "name": new_name.strip(),
+                    "category": new_category,
+                    "cycle_time_s": new_cycle,
+                    "capacity_ppm": new_capacity,
+                    "footprint_m2": new_footprint,
+                    "cost_eur": new_cost,
+                    "energy_kw": new_energy,
+                    "flexibility_score": new_flex,
+                    "supported_industries": [i.strip() for i in new_industries.split(",") if i.strip()],
+                    "capability_tags": new_tags,
+                    "cleanroom_compatible": new_cleanroom,
+                    "tolerance_um": new_tolerance,
+                    "variant_flexibility": new_var_flex
+                }
+
+                existing_ids = {m["id"] for m in modules}
+                if new_module["id"] in existing_ids:
+                    st.error(f"{t('library_add_error')}: {t('library_id_exists')}")
+                    valid = False
+
+            if valid:
+                try:
+                    _validate_module_item(new_module)
+                except Exception as e:
+                    st.error(f"{t('library_add_error')}: {e}")
+                    valid = False
+
+            if valid:
+                try:
+                    write_module_to_db(new_module)
+                    st.success(t('library_added_success'))
+                    st.balloons()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"{t('library_add_error')}: {e}")
+
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # --- Delete Module ---
+    st.markdown(f"<div class='section-title'>{t('library_delete_button')} Module</div>", unsafe_allow_html=True)
+    st.caption(t('library_delete_confirm'))
+
+    try:
+        modules_data = load_and_validate_modules()
+        modules = modules_data["modules"]
+    except Exception as e:
+        st.error(f"{t('error_loading_modules')}: {e}")
+        modules = []
+
+    if modules:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            module_to_delete = st.selectbox(
+                "Select module to delete",
+                options=[m["id"] for m in modules],
+                format_func=lambda x: f"{x} — {next(m['name'] for m in modules if m['id'] == x)}",
+                key="dev_module_to_delete"
+            )
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button(t('library_delete_button'), type="secondary", use_container_width=True, key="dev_delete_module_btn"):
+                try:
+                    delete_module_from_db(module_to_delete)
+                    st.success(t('library_deleted_success'))
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"{t('library_add_error')}: {e}")
+
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # ═══════ QUICK TEST SUITE (HIDDEN — toggle _show_quick_test to True) ═══════
+    _show_quick_test = False
+    if _show_quick_test:
+        st.markdown(f"<div class='section-title'>{t('dev_test_tools_title')}</div>", unsafe_allow_html=True)
+        st.caption(t('dev_test_tools_description'))
+
+        if st.button(t('dev_quick_test_button'), help=t('dev_quick_test_help'), key="dev_quick_test_btn"):
+            import random, time
+            try:
+                products_data = load_and_validate_products()
+                modules_data = load_and_validate_modules()
+                products = products_data["products"]
+                modules_db = modules_data["modules"]
+                
+                test_results = []
+                
+                # Test 1: Very low demand
+                p = products[0]
+                req = {"product_type": p["id"], "output_ppm": 60.0, "annual_demand": 1,
+                       "oee_target": 0.85, "reject_rate": 0.02, "variants": 1, "tolerance_um": 100.0,
+                       "cleanroom_required": True, "inspection_required": True, "traceability_required": False, "packaging_required": True,
+                       "footprint_max_m2": 50.0, "budget_max_eur": 500000.0,
+                       "shifts_per_day": 2, "hours_per_shift": 8, "working_days_per_year": 250,
+                       "optimization_priority": "cost"}
+                r = generate_concept_report(req, p, modules_db, lang=get_language())
+                test_results.append({"name": "Low Demand (1 unit)", "status": "PASS" if r["feasibility"]["status"] == "PASS" and r["kpis"]["capacity_utilization"] < 0.3 else "FAIL",
+                                     "detail": f"Util: {r['kpis']['capacity_utilization']*100:.1f}%, Cost: {fmt_compact(r['cost_summary']['total_cost_eur'])} EUR"})
+                
+                # Test 2: Very high demand
+                req = {"product_type": p["id"], "output_ppm": 500.0, "annual_demand": 10_000_000,
+                       "oee_target": 0.99, "reject_rate": 0.0, "variants": 1, "tolerance_um": 100.0,
+                       "cleanroom_required": False, "inspection_required": False, "traceability_required": False, "packaging_required": False,
+                       "footprint_max_m2": 5000.0, "budget_max_eur": 50_000_000.0,
+                       "shifts_per_day": 1, "hours_per_shift": 8, "working_days_per_year": 200,
+                       "optimization_priority": "cost"}
+                r = generate_concept_report(req, p, modules_db, lang=get_language())
+                has_over_warning = any(w.get("type") == "capacity_utilization_over" for w in r["feasibility"]["warnings"])
+                test_results.append({"name": "High Demand (10M units)", "status": "PASS" if r["feasibility"]["status"] == "FAIL" or has_over_warning else "FAIL",
+                                     "detail": f"Status: {r['feasibility']['status']}, Util: {r['kpis']['capacity_utilization']*100:.1f}%"})
+                
+                # Test 3: Low budget
+                req = {"product_type": p["id"], "output_ppm": 60.0, "annual_demand": 500000,
+                       "oee_target": 0.85, "reject_rate": 0.02, "variants": 1, "tolerance_um": 100.0,
+                       "cleanroom_required": True, "inspection_required": True, "traceability_required": False, "packaging_required": True,
+                       "footprint_max_m2": 50.0, "budget_max_eur": 1000.0,
+                       "shifts_per_day": 2, "hours_per_shift": 8, "working_days_per_year": 250,
+                       "optimization_priority": "cost"}
+                r = generate_concept_report(req, p, modules_db, lang=get_language())
+                has_cost_error = any(w.get("type") == "cost_overrun" for w in r["feasibility"]["warnings"])
+                test_results.append({"name": "Low Budget (1k EUR)", "status": "PASS" if r["feasibility"]["status"] == "FAIL" and has_cost_error else "FAIL",
+                                     "detail": f"Status: {r['feasibility']['status']}, Cost: {fmt_compact(r['cost_summary']['total_cost_eur'])} EUR"})
+                
+                # Test 4: Max variants
+                req = {"product_type": p["id"], "output_ppm": 60.0, "annual_demand": 500000,
+                       "oee_target": 0.85, "reject_rate": 0.02, "variants": 100, "tolerance_um": 100.0,
+                       "cleanroom_required": True, "inspection_required": True, "traceability_required": False, "packaging_required": True,
+                       "footprint_max_m2": 50.0, "budget_max_eur": 500000.0,
+                       "shifts_per_day": 2, "hours_per_shift": 8, "working_days_per_year": 250,
+                       "optimization_priority": "cost"}
+                r = generate_concept_report(req, p, modules_db, lang=get_language())
+                test_results.append({"name": "Max Variants (100)", "status": "PASS" if r["feasibility"]["status"] in ("PASS", "FAIL") else "FAIL",
+                                     "detail": f"Status: {r['feasibility']['status']}, Steps: {len(r['process_chain'])}"})
+                
+                # Test 5: Reproducibility
+                req = {"product_type": p["id"], "output_ppm": 60.0, "annual_demand": 500000,
+                       "oee_target": 0.85, "reject_rate": 0.02, "variants": 1, "tolerance_um": 100.0,
+                       "cleanroom_required": True, "inspection_required": True, "traceability_required": False, "packaging_required": True,
+                       "footprint_max_m2": 50.0, "budget_max_eur": 500000.0,
+                       "shifts_per_day": 2, "hours_per_shift": 8, "working_days_per_year": 250,
+                       "optimization_priority": "cost"}
+                r1 = generate_concept_report(req, p, modules_db, lang=get_language())
+                r2 = generate_concept_report(req, p, modules_db, lang=get_language())
+                same = (r1["cost_summary"]["total_cost_eur"] == r2["cost_summary"]["total_cost_eur"] and
+                        r1["feasibility"]["status"] == r2["feasibility"]["status"] and
+                        len(r1["process_chain"]) == len(r2["process_chain"]))
+                test_results.append({"name": "Reproducibility", "status": "PASS" if same else "FAIL",
+                                     "detail": f"Cost match: {r1['cost_summary']['total_cost_eur']} == {r2['cost_summary']['total_cost_eur']}"})
+                
+                # Test 6: Performance
+                start = time.time()
+                for _ in range(10):
+                    rp = random.choice(products)
+                    rq = {"product_type": rp["id"], "output_ppm": round(random.uniform(10, 300), 1),
+                          "annual_demand": random.randint(10000, 2000000),
+                          "oee_target": round(random.uniform(0.50, 0.95), 2), "reject_rate": round(random.uniform(0.0, 0.08), 3),
+                          "variants": random.randint(1, 10), "tolerance_um": round(random.uniform(1, 500), 1),
+                          "cleanroom_required": random.choice([True, False]), "inspection_required": random.choice([True, False]),
+                          "traceability_required": random.choice([True, False]), "packaging_required": random.choice([True, False]),
+                          "footprint_max_m2": round(random.uniform(10, 500), 1), "budget_max_eur": random.randint(50000, 2000000),
+                          "shifts_per_day": random.randint(1, 3), "hours_per_shift": random.randint(4, 12),
+                          "working_days_per_year": random.randint(200, 330), "optimization_priority": random.choice(["cost", "footprint", "energy", "flexibility"])}
+                    generate_concept_report(rq, rp, modules_db, lang=get_language())
+                elapsed = time.time() - start
+                test_results.append({"name": "Performance (10 random)", "status": "PASS" if elapsed < 5.0 else "WARN",
+                                     "detail": f"10 concepts in {elapsed:.2f}s ({elapsed/10:.3f}s avg)"})
+                
+                passed = sum(1 for t in test_results if t["status"] == "PASS")
+                failed = sum(1 for t in test_results if t["status"] == "FAIL")
+                warnings = sum(1 for t in test_results if t["status"] == "WARN")
+                
+                st.session_state._dev_test_result = {
+                    "status": "pass" if failed == 0 else "fail",
+                    "tests": test_results,
+                    "summary": f"{passed} passed, {failed} failed, {warnings} warnings"
+                }
+                st.rerun()
+            except Exception as e:
+                st.session_state._dev_test_result = {"status": "fail", "error": str(e)}
+                st.rerun()
+
+        result = st.session_state.get("_dev_test_result")
+        if result:
+            if result.get("status") == "fail" and "error" in result:
+                st.error(t('dev_test_fail').format(error=result.get('error', 'Unknown')))
+            elif "tests" in result:
+                st.markdown(f"**{result['summary']}**")
+                for test in result["tests"]:
+                    color = "🟢" if test["status"] == "PASS" else "🟡" if test["status"] == "WARN" else "🔴"
+                    st.markdown(f"{color} **{test['name']}** — {test['detail']}")
+            else:
+                st.error(t('dev_test_fail').format(error=result.get('error', 'Unknown')))
+
+        st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # --- Database Stats ---
+    st.markdown(f"<div class='section-title'>{t('dev_module_stats')}</div>", unsafe_allow_html=True)
+    try:
+        modules_data = load_and_validate_modules()
+        products_data = load_and_validate_products()
+        s1, s2 = st.columns(2)
+        with s1:
+            st.markdown(f"""
+            <div class="lib-stat-card">
+                <div class="lib-stat-value">{len(modules_data['modules'])}</div>
+                <div class="lib-stat-label">{t('dev_total_modules')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with s2:
+            st.markdown(f"""
+            <div class="lib-stat-card">
+                <div class="lib-stat-value">{len(products_data['products'])}</div>
+                <div class="lib-stat-label">{t('dev_total_products')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Stats error: {e}")
+
+
+# ===================================================================
+# OLD render_history (replaced by Developer page)
+# ===================================================================
+
+def render_history():
+    """DEPRECATED: History is now in the Developer Tools page."""
+    pass
+
+
+# ===================================================================
 # MAIN
 # ===================================================================
 
@@ -1241,7 +1872,14 @@ def main():
     page = st.session_state.get("page", "Configurator")
 
     if page == "Configurator":
-        if generate:
+        load_idx = st.session_state.get("_load_history_idx")
+        if load_idx is not None:
+            history = st.session_state.get("concept_history", [])
+            if 0 <= load_idx < len(history):
+                report = history[load_idx]["report"]
+                render_dashboard(report)
+            st.session_state._load_history_idx = None
+        elif generate:
             try:
                 validate_customer_requirements(requirements)
                 modules_data = load_and_validate_modules()
@@ -1249,6 +1887,17 @@ def main():
 
                 with st.spinner(t('status_generating')):
                     report = generate_concept_report(requirements, selected_product, modules_db, lang=get_language())
+
+                # Store in concept history (max 10 entries)
+                history_entry = {
+                    "timestamp": report["meta"]["generated_at"],
+                    "product_name": report["product"]["name"],
+                    "feasibility": report["feasibility"]["status"],
+                    "total_cost": report["cost_summary"]["total_cost_eur"],
+                    "report": report
+                }
+                st.session_state.concept_history.insert(0, history_entry)
+                st.session_state.concept_history = st.session_state.concept_history[:10]
 
                 render_dashboard(report)
 
@@ -1261,7 +1910,7 @@ def main():
         else:
             render_welcome()
     else:
-        render_library_page()
+        render_developer_page()
 
     # Developer navigation at bottom of main content
     render_footer_nav()

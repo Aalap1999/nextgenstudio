@@ -433,6 +433,24 @@ class KnowledgeModel:
                 "Bewerten Sie, ob eine Pufferstation kurzfristige Stoerungen absorbieren kann.",
             ],
         },
+        "capacity_utilization_over": {
+            "condition": "capacity_utilization > 1.0",
+            "severity": "error",
+            "recommendations_en": [
+                "CRITICAL: Annual demand exceeds maximum line capacity. This configuration is physically impossible.",
+                "Increase production schedule: add shifts, extend hours per shift, or increase working days per year.",
+                "Reduce the annual demand target or split production across multiple lines.",
+                "Increase the OEE target or reduce reject rate to improve effective capacity.",
+                "Consider a higher-speed architecture (linear transport with dedicated fast-cycle stations).",
+            ],
+            "recommendations_de": [
+                "KRITISCH: Der Jahresbedarf ueberschreitet die maximale Linienkapazitaet. Diese Konfiguration ist physikalisch unmoeglich.",
+                "Erhoehen Sie den Produktionsplan: Zusatzschichten, verlaengerte Schichtzeiten oder mehr Arbeitstage pro Jahr.",
+                "Reduzieren Sie das Jahresbedarfsziel oder teilen Sie die Produktion auf mehrere Linien auf.",
+                "Erhoehen Sie das OEE-Ziel oder senken Sie die Ausschussrate, um die effektive Kapazitaet zu steigern.",
+                "Erwaeigen Sie eine hoehergeschwindigkeitsarchitektur (Linear-Transport mit dedizierten Schnellzyklus-Stationen).",
+            ],
+        },
         "cost_overrun": {
             "condition": "total_cost > budget_max",
             "severity": "error",
@@ -770,7 +788,7 @@ class KnowledgeModel:
                 "title_de": "Bedarf ueberschreitet Linienkapazitaet",
                 "message_en": f"Capacity utilization is {util*100:.1f}%. The annual demand exceeds the line's maximum capacity. This configuration is physically impossible.",
                 "message_de": f"Kapazitaetsauslastung betraegt {util*100:.1f}%. Der Jahresbedarf ueberschreitet die maximale Linienkapazitaet. Diese Konfiguration ist physikalisch unmoeglich.",
-                "actions": self.get_recommendations("capacity_utilization_high", lang),
+                "actions": self.get_recommendations("capacity_utilization_over", lang),
             })
         elif util > 0.95:
             recommendations.append({

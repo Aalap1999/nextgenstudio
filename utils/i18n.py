@@ -11,8 +11,8 @@ class I18n:
             "de": "NextGen Smart Machine Studio"
         },
         "header_subtitle": {
-            "en": "PIA Automation | Deterministic Engineering Configurator",
-            "de": "PIA Automation | Deterministischer Engineering-Konfigurator"
+            "en": "Aalap Janve | Deterministic Engineering Configurator",
+            "de": "Aalap Janve | Deterministischer Engineering-Konfigurator"
         },
         "header_author": {
             "en": "Developed by Aalap Janve | Master's Thesis Prototype",
@@ -162,6 +162,35 @@ class I18n:
         "budget_help": {
             "en": "Maximum capital expenditure for the line.",
             "de": "Maximale Kapitalkosten fuer die Linie."
+        },
+
+        "section_schedule": {
+            "en": "Operating Schedule",
+            "de": "Betriebsplan"
+        },
+        "shifts_label": {
+            "en": "Shifts per Day",
+            "de": "Schichten pro Tag"
+        },
+        "shifts_help": {
+            "en": "Number of production shifts per day (1, 2, or 3).",
+            "de": "Anzahl der Produktionsschichten pro Tag (1, 2 oder 3)."
+        },
+        "hours_label": {
+            "en": "Hours per Shift",
+            "de": "Stunden pro Schicht"
+        },
+        "hours_help": {
+            "en": "Duration of each production shift in hours.",
+            "de": "Dauer jeder Produktionsschicht in Stunden."
+        },
+        "days_label": {
+            "en": "Working Days per Year",
+            "de": "Arbeitstage pro Jahr"
+        },
+        "days_help": {
+            "en": "Number of working days per year (1-365).",
+            "de": "Anzahl der Arbeitstage pro Jahr (1-365)."
         },
 
         "section_optimization": {
@@ -388,6 +417,14 @@ class I18n:
             "en": "Use the JSON file for downstream CAD/ERP integration.",
             "de": "Verwenden Sie die JSON-Datei fuer die nachgelagerte CAD/ERP-Integration."
         },
+        "history_title": {"en": "Concept History", "de": "Konzept-Verlauf"},
+        "history_description": {
+            "en": "Previously generated concepts. Click to reload a concept.",
+            "de": "Zuvor generierte Konzepte. Klicken Sie, um ein Konzept neu zu laden."
+        },
+        "history_empty": {"en": "No concepts generated yet.", "de": "Noch keine Konzepte generiert."},
+        "history_load": {"en": "Load", "de": "Laden"},
+        "history_clear": {"en": "Clear History", "de": "Verlauf loeschen"},
 
         # Status Messages
         "status_pass": {"en": "PASS", "de": "BESTANDEN"},
@@ -453,6 +490,38 @@ class I18n:
         "library_added_success": {"en": "Module added successfully. Reloading...", "de": "Modul erfolgreich hinzugefuegt. Wird neu geladen..."},
         "library_add_error": {"en": "Validation error", "de": "Validierungsfehler"},
         "library_id_exists": {"en": "A module with this ID already exists.", "de": "Ein Modul mit dieser ID existiert bereits."},
+        "library_delete_button": {"en": "Delete", "de": "Loeschen"},
+        "library_deleted_success": {"en": "Module deleted successfully. Reloading...", "de": "Modul erfolgreich geloescht. Wird neu geladen..."},
+        "library_delete_confirm": {"en": "Are you sure you want to delete this module?", "de": "Sind Sie sicher, dass Sie dieses Modul loeschen moechten?"},
+
+        # Reset button
+        "reset_button": {"en": "Reset to Defaults", "de": "Zuruecksetzen auf Standardwerte"},
+        "reset_help": {"en": "Reset all inputs to their default values", "de": "Alle Eingaben auf Standardwerte zuruecksetzen"},
+
+        # Developer page
+        "page_developer": {"en": "Developer Tools", "de": "Entwickler-Tools"},
+        "dev_tools_title": {"en": "Developer Tools", "de": "Entwickler-Tools"},
+        "dev_tools_description": {"en": "Concept management and system validation tools.", "de": "Konzeptverwaltungs- und Systemvalidierungstools."},
+        "dev_history_title": {"en": "Concept History", "de": "Konzept-Verlauf"},
+        "dev_history_description": {"en": "Previously generated concepts. Click Load to view, or Compare to see side-by-side.", "de": "Zuvor generierte Konzepte. Klicken Sie auf Laden zum Anzeigen oder Vergleichen fuer eine Seite-an-Seite-Ansicht."},
+        "dev_compare_title": {"en": "Compare Concepts", "de": "Konzepte vergleichen"},
+        "dev_compare_description": {"en": "Select two concepts to compare side-by-side.", "de": "Waehlen Sie zwei Konzepte zum Seite-an-Seite-Vergleichen aus."},
+        "dev_compare_select_1": {"en": "Select Concept A", "de": "Konzept A auswaehlen"},
+        "dev_compare_select_2": {"en": "Select Concept B", "de": "Konzept B auswaehlen"},
+        "dev_test_tools_title": {"en": "Quick Test", "de": "Schnelltest"},
+        "dev_test_tools_description": {"en": "Generate a concept with random requirements to test engine stability.", "de": "Generieren Sie ein Konzept mit zufaelligen Anforderungen, um die Engine-Stabilitaet zu testen."},
+        "dev_quick_test_button": {"en": "Run Random Test", "de": "Zufaelligen Test ausfuehren"},
+        "dev_quick_test_help": {"en": "Generates a concept with random but valid inputs.", "de": "Generiert ein Konzept mit zufaelligen, aber gueltigen Eingaben."},
+        "dev_test_pass": {"en": "Test passed — engine generated a valid concept.", "de": "Test bestanden — Engine hat ein gueltiges Konzept generiert."},
+        "dev_test_fail": {"en": "Test failed — {error}", "de": "Test fehlgeschlagen — {error}"},
+        "dev_module_stats": {"en": "Module Database Stats", "de": "Modul-Datenbank-Statistiken"},
+        "dev_total_modules": {"en": "Total Modules", "de": "Gesamtmodule"},
+        "dev_total_products": {"en": "Total Products", "de": "Gesamtprodukte"},
+        "dev_back": {"en": "Back to Configurator", "de": "Zurueck zum Konfigurator"},
+        "dev_no_history": {"en": "No concepts in history. Generate some concepts first.", "de": "Keine Konzepte im Verlauf. Generieren Sie zuerst einige Konzepte."},
+        "dev_load": {"en": "Load", "de": "Laden"},
+        "dev_compare": {"en": "Compare", "de": "Vergleichen"},
+        "dev_remove": {"en": "Remove", "de": "Entfernen"},
 
         # Form field labels
         "field_id": {"en": "Module ID", "de": "Modul-ID"},
@@ -537,7 +606,11 @@ class I18n:
 
     def __call__(self, key: str) -> str:
         """Convenience: i18n('key') returns translated string."""
-        return self.get(key)
+        val = self.get(key)
+        if val == key:
+            import logging
+            logging.getLogger("smart_machine_studio.i18n").warning(f"Missing i18n key: {key}")
+        return val
 
 
 # Global instance - UI sets language via session_state

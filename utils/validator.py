@@ -1,5 +1,8 @@
 import json
 import os
+import re
+import logging
+import functools
 
 try:
     from jsonschema import validate, ValidationError
@@ -12,9 +15,27 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 SCHEMA_DIR = os.path.join(DATA_DIR, "schemas")
 
+logger = logging.getLogger("smart_machine_studio")
+
+__all__ = [
+    "load_json", "load_and_validate_modules", "load_and_validate_products",
+    "validate_customer_requirements", "ValidationError", "_validate_module_item"
+]
+
 def load_json(path: str) -> dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    """Load JSON with robust error handling."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError as e:
+        logger.error("File not found: %s", path)
+        raise ValidationError(f"File not found: {path}") from e
+    except json.JSONDecodeError as e:
+        logger.error("Invalid JSON in %s: %s", path, e)
+        raise ValidationError(f"Invalid JSON in {path}: {e}") from e
+    except PermissionError as e:
+        logger.error("Permission denied: %s", path)
+        raise ValidationError(f"Permission denied: {path}") from e
 
 def _validate_module_item(m: dict) -> None:
     required = ["id", "name", "category", "cycle_time_s", "capacity_ppm",
@@ -24,6 +45,9 @@ def _validate_module_item(m: dict) -> None:
     missing = [k for k in required if k not in m]
     if missing:
         raise ValidationError(f"Module missing fields: {missing}")
+    # Sanitize ID format
+    if not re.match(r'^[a-zA-Z0-9_\-]+$', str(m.get("id", ""))):
+        raise ValidationError(f"Module ID must contain only letters, numbers, underscores, and hyphens")
     for k in ["cycle_time_s", "capacity_ppm", "footprint_m2", "cost_eur", "energy_kw", "tolerance_um"]:
         if not isinstance(m[k], (int, float)) or m[k] < 0:
             raise ValidationError(f"Module {m['id']}: {k} must be >= 0")
@@ -74,34 +98,36 @@ def validate_products(data: dict) -> None:
         for p in data["products"]:
             _validate_product_item(p)
 
-def load_and_validate_modules() -> dict:
+@functools.lru_cache(maxsize=1)
+def _load_modules_cached() -> dict:
+    """Cached module loading to avoid repeated file I/O."""
     path = os.path.join(DATA_DIR, "modules.json")
     data = load_json(path)
     validate_modules(data)
+    logger.info("Loaded and validated %d modules", len(data.get("modules", [])))
     return data
 
-def load_and_validate_products() -> dict:
+@functools.lru_cache(maxsize=1)
+def _load_products_cached() -> dict:
+    """Cached product loading to avoid repeated file I/O."""
     path = os.path.join(DATA_DIR, "products.json")
     data = load_json(path)
     validate_products(data)
+    logger.info("Loaded and validated %d products", len(data.get("products", [])))
     return data
+
+def load_and_validate_modules() -> dict:
+    return _load_modules_cached()
+
+def load_and_validate_products() -> dict:
+    return _load_products_cached()
 
 def validate_customer_requirements(req: dict) -> None:
     required = [
-        "product_type",
-        "output_ppm",
-        "annual_demand",
-        "oee_target",
-        "reject_rate",
-        "variants",
-        "tolerance_um",
-        "cleanroom_required",
-        "inspection_required",
-        "traceability_required",
-        "packaging_required",
-        "footprint_max_m2",
-        "budget_max_eur",
-        "optimization_priority"
+        "product_type", "output_ppm", "annual_demand", "oee_target",
+        "reject_rate", "variants", "tolerance_um", "cleanroom_required",
+        "inspection_required", "traceability_required", "packaging_required",
+        "footprint_max_m2", "budget_max_eur", "optimization_priority"
     ]
     missing = [k for k in required if k not in req]
     if missing:
@@ -112,6 +138,8 @@ def validate_customer_requirements(req: dict) -> None:
         raise ValidationError("oee_target must be in (0, 1]")
     if not (0 <= req["reject_rate"] < 1):
         raise ValidationError("reject_rate must be in [0, 1)")
+    if not (1 <= req["variants"] <= 100):
+        raise ValidationError("variants must be between 1 and 100")
     if req["tolerance_um"] <= 0:
         raise ValidationError("tolerance_um must be > 0")
     if req["footprint_max_m2"] <= 0:
@@ -120,3 +148,10 @@ def validate_customer_requirements(req: dict) -> None:
         raise ValidationError("budget_max_eur must be > 0")
     if req["optimization_priority"] not in {"cost", "footprint", "energy", "flexibility"}:
         raise ValidationError("optimization_priority must be one of: cost, footprint, energy, flexibility")
+    # Optional operating schedule validation
+    if "shifts_per_day" in req and not (1 <= req["shifts_per_day"] <= 3):
+        raise ValidationError("shifts_per_day must be between 1 and 3")
+    if "hours_per_shift" in req and not (1 <= req["hours_per_shift"] <= 24):
+        raise ValidationError("hours_per_shift must be between 1 and 24")
+    if "working_days_per_year" in req and not (1 <= req["working_days_per_year"] <= 365):
+        raise ValidationError("working_days_per_year must be between 1 and 365")
