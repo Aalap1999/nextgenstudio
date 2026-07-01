@@ -522,6 +522,10 @@ class I18n:
         "dev_load": {"en": "Load", "de": "Laden"},
         "dev_compare": {"en": "Compare", "de": "Vergleichen"},
         "dev_remove": {"en": "Remove", "de": "Entfernen"},
+        "dev_password_label": {"en": "Developer Password", "de": "Entwickler-Passwort"},
+        "dev_password_help": {"en": "Enter password to enable delete and add features", "de": "Passwort eingeben, um Loeschen- und Hinzufuegen-Funktionen zu aktivieren"},
+        "dev_password_correct": {"en": "Developer access granted", "de": "Entwicklerzugriff gewaehrt"},
+        "dev_password_hint": {"en": "Password required for delete / add operations", "de": "Passwort erforderlich fuer Loeschen-/Hinzufuegen-Operationen"},
 
         # Form field labels
         "field_id": {"en": "Module ID", "de": "Modul-ID"},

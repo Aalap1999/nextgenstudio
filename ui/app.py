@@ -107,6 +107,8 @@ def _init_state():
         st.session_state._compare_idx_b = None
     if "_dev_test_result" not in st.session_state:
         st.session_state._dev_test_result = None
+    if "_dev_password" not in st.session_state:
+        st.session_state._dev_password = ""
 
 
 _init_state()
@@ -1404,6 +1406,25 @@ def render_developer_page():
     st.markdown(f"<div class='section-title'>{t('dev_tools_title')}</div>", unsafe_allow_html=True)
     st.caption(t('dev_tools_description'))
 
+    # Password gate for destructive operations
+    pwd_col1, pwd_col2 = st.columns([2, 3])
+    with pwd_col1:
+        password = st.text_input(
+            t('dev_password_label'),
+            value=st.session_state.get("_dev_password", ""),
+            type="password",
+            help=t('dev_password_help'),
+            key="dev_password_input"
+        )
+        st.session_state._dev_password = password
+    is_dev = (st.session_state._dev_password == "1404")
+    with pwd_col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if is_dev:
+            st.success(t('dev_password_correct'))
+        else:
+            st.info(t('dev_password_hint'))
+
     # --- Concept History ---
     st.markdown(f"<div class='section-title'>{t('dev_history_title')}</div>", unsafe_allow_html=True)
     st.caption(t('dev_history_description'))
@@ -1438,15 +1459,21 @@ def render_developer_page():
                         st.session_state._compare_idx_b = None
                     st.rerun()
             with col4:
-                if st.button(t('dev_remove'), key=f"dev_history_remove_{i}"):
-                    st.session_state.concept_history.pop(i)
-                    st.rerun()
+                if is_dev:
+                    if st.button(t('dev_remove'), key=f"dev_history_remove_{i}"):
+                        st.session_state.concept_history.pop(i)
+                        st.rerun()
+                else:
+                    st.button(t('dev_remove'), disabled=True, key=f"dev_history_remove_{i}")
 
-        if st.button(t('history_clear'), key="dev_history_clear"):
-            st.session_state.concept_history = []
-            st.session_state._compare_idx_a = None
-            st.session_state._compare_idx_b = None
-            st.rerun()
+        if is_dev:
+            if st.button(t('history_clear'), key="dev_history_clear"):
+                st.session_state.concept_history = []
+                st.session_state._compare_idx_a = None
+                st.session_state._compare_idx_b = None
+                st.rerun()
+        else:
+            st.button(t('history_clear'), disabled=True, key="dev_history_clear")
 
     # --- Compare Mode ---
     if st.session_state._compare_idx_a is not None:
@@ -1694,13 +1721,112 @@ def render_developer_page():
             )
         with col2:
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button(t('library_delete_button'), type="secondary", use_container_width=True, key="dev_delete_module_btn"):
-                try:
-                    delete_module_from_db(module_to_delete)
-                    st.success(t('library_deleted_success'))
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"{t('library_add_error')}: {e}")
+            if is_dev:
+                if st.button(t('library_delete_button'), type="secondary", use_container_width=True, key="dev_delete_module_btn"):
+                    try:
+                        delete_module_from_db(module_to_delete)
+                        st.success(t('library_deleted_success'))
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"{t('library_add_error')}: {e}")
+            else:
+                st.button(t('library_delete_button'), type="secondary", use_container_width=True, disabled=True, key="dev_delete_module_btn")
+
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # --- Add Module ---
+    st.markdown(f"<div class='section-title'>{t('library_add_title')}</div>", unsafe_allow_html=True)
+    st.caption(t('library_add_description'))
+
+    if not is_dev:
+        st.info(t('dev_password_hint'))
+
+    with st.form("add_module_form"):
+        c1, c2 = st.columns(2)
+        with c1:
+            new_id = st.text_input(t('field_id'), help=t('field_id_help'))
+            new_name = st.text_input(t('field_name'))
+            known_categories = sorted(KNOWLEDGE_MODEL.MODULE_CATEGORIES.keys())
+            new_category = st.selectbox(
+                t('field_category'), known_categories,
+                help="Select from known module categories. This determines how the module is grouped in the library.",
+                key="new_category_select"
+            )
+            new_cycle = st.number_input(t('field_cycle_time'), min_value=0.0, value=1.0, step=0.1, help=t('field_cycle_time_help'))
+            new_capacity = st.number_input(t('field_capacity'), min_value=1.0, value=60.0, step=5.0, help=t('field_capacity_help'))
+            new_footprint = st.number_input(t('field_footprint'), min_value=0.1, value=1.0, step=0.1, help=t('field_footprint_help'))
+        with c2:
+            new_cost = st.number_input(t('field_cost'), min_value=1000, value=25000, step=1000, help=t('field_cost_help'))
+            new_energy = st.number_input(t('field_energy'), min_value=0.1, value=1.0, step=0.1, help=t('field_energy_help'))
+            new_flex = st.slider(t('field_flexibility'), 1, 10, 5, help=t('field_flexibility_help'))
+            new_tolerance = st.number_input(t('field_tolerance'), min_value=1, value=100, step=1, help=t('field_tolerance_help'))
+            new_var_flex = st.slider(t('field_variant_flex'), 1, 10, 5, help=t('field_variant_flex_help'))
+            new_cleanroom = st.checkbox(t('field_cleanroom'), value=True, help=t('field_cleanroom_help'))
+
+        all_known_tags = sorted(set(
+            tag for op in KNOWLEDGE_MODEL.OPERATIONS.values()
+            for tag in op.get("capability_tags", [])
+        ))
+        new_tags = st.multiselect(
+            "Capability Tags (select at least one)", all_known_tags,
+            help="Select tags that describe what this module can do. The engine uses these tags to match modules to operations.",
+            key="new_tags_multiselect"
+        )
+
+        new_industries = st.text_input(t('field_industries'), help=t('field_industries_help'))
+
+        submitted = st.form_submit_button(t('library_add_button'), type="primary", disabled=not is_dev)
+
+    if submitted and is_dev:
+        valid = True
+        if not new_id.strip():
+            st.error(f"{t('library_add_error')}: Module ID is required")
+            valid = False
+        if valid and not _sanitize_module_id(new_id.strip()):
+            st.error(f"{t('library_add_error')}: Module ID must contain only letters, numbers, underscores, and hyphens")
+            valid = False
+        if valid and not new_tags:
+            st.error("Please select at least one capability tag. Without tags, the module will never be found by the engine.")
+            valid = False
+
+        if valid:
+            new_module = {
+                "id": new_id.strip(),
+                "name": new_name.strip(),
+                "category": new_category,
+                "cycle_time_s": new_cycle,
+                "capacity_ppm": new_capacity,
+                "footprint_m2": new_footprint,
+                "cost_eur": new_cost,
+                "energy_kw": new_energy,
+                "flexibility_score": new_flex,
+                "supported_industries": [i.strip() for i in new_industries.split(",") if i.strip()],
+                "capability_tags": new_tags,
+                "cleanroom_compatible": new_cleanroom,
+                "tolerance_um": new_tolerance,
+                "variant_flexibility": new_var_flex
+            }
+
+            existing_ids = {m["id"] for m in modules}
+            if new_module["id"] in existing_ids:
+                st.error(f"{t('library_add_error')}: {t('library_id_exists')}")
+                valid = False
+
+        if valid:
+            try:
+                _validate_module_item(new_module)
+            except Exception as e:
+                st.error(f"{t('library_add_error')}: {e}")
+                valid = False
+
+        if valid:
+            try:
+                write_module_to_db(new_module)
+                st.success(t('library_added_success'))
+                st.balloons()
+                st.rerun()
+            except Exception as e:
+                st.error(f"{t('library_add_error')}: {e}")
 
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
